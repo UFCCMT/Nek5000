@@ -30,7 +30,6 @@
 ! SOLN and CMTDATA are indexed, assuming vdiff has been filled by uservp
 ! somehow. In serious need of debugging and replacement.
       include 'SIZE'
-      include 'GEOM' ! diagnostic
 
       parameter (ldd=lx1*ly1*lz1)
       common /ctmp1/ viscscr(lx1,ly1,lz1)
@@ -59,27 +58,6 @@
          enddo
       enddo
 
-      if (eq.eq.2) then
-      pi=4.0*atan(1.0)
-      do i=1,nxyz
-         x=xm1(i,1,1,e)-5.0
-         y=ym1(i,1,1,e)
-         r2=x**2+y**2
-         write(100,'(6e17.8)') x,y,flux(i,1),10.0*x*y/pi*exp(1-r2),
-     >                 flux(i,2),5.0*(y**2-x**2)/pi*exp(1-r2)
-      enddo
-      elseif (eq .eq. 3) then
-      pi=4.0*atan(1.0)
-      do i=1,nxyz
-         x=xm1(i,1,1,e)-5.0
-         y=ym1(i,1,1,e)
-         r2=x**2+y**2
-         write(200,'(6e17.8)') x,y,
-     >                 flux(i,1),5.0*(y**2-x**2)/pi*exp(1-r2),
-     >   flux(i,2),-10.0*x*y/pi*exp(1-r2)
-      enddo
-      endif
-
       return
       end
 
@@ -87,7 +65,6 @@
 
       subroutine fluxj_vol(flux,gradu,e,eq)
       include 'SIZE'
-      include 'GEOM' ! diagnostic
 
       integer e,eq
       real flux(nx1*ny1*nz1,ndim),gradu(nx1*ny1*nz1,toteq,ndim)
@@ -394,7 +371,7 @@
             call copy(visco,vx(1,1,1,e),npt)
             call vsq(visco,npt)
             call addcol3(visco,vy(1,1,1,e),vy(1,1,1,e),npt)
-            if(if3d) call addcol3(visco,vz(1,1,1,e),vy(1,1,1,e),npt)
+            if(if3d) call addcol3(visco,vz(1,1,1,e),vz(1,1,1,e),npt)
 ! visco now contains uiui=2KE. only happens here
             call invcol2(visco,vtrans(1,1,1,e,irho),npt)
             call addcol4(gijklu,visco,vdiff(1,1,1,e,iknd),dut(1,1),npt)
@@ -429,10 +406,10 @@
             endif
 
 ! form mu-K/cv
-            call sub3(visco,vdiff(1,1,1,e,imu),vdiff(1,1,1,e,iknd),npt)
-            call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-            call addcol4(gijklu,visco,vx(1,1,1,e),dut(1,2),npt)
-            call addcol4(gijklu,visco,vy(1,1,1,e),dut(1,3),npt)
+            call sub3(visco,vdiff(1,1,1,e,imu),vdiff(1,1,1,e,iknd),npt) ! mu-k
+            call invcol2(visco,vtrans(1,1,1,e,irho),npt) ! (mu-k)/rho
+            call addcol4(gijklu,visco,vx(1,1,1,e),dut(1,2),npt) ! gdu+=(mu-k)*u*dU2
+            call addcol4(gijklu,visco,vy(1,1,1,e),dut(1,3),npt) ! gdu+=(mu-k)*v*dU3
             if(if3d) call addcol4(gijklu,visco,vz(1,1,1,e),dut(1,4),npt)
             call add3(visco,vdiff(1,1,1,e,imu),vdiff(1,1,1,e,ilam),npt)
             call invcol2(visco,vtrans(1,1,1,e,irho),npt)
