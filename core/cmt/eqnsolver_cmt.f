@@ -26,9 +26,9 @@
       iuj =iqp+nstate*nfq
 
 ! apply viscous flux jacobian A.
-!     call fluxj_ns_vol(diffh,gradu,e,eq)
-! monolithic regularization for now
-      call fluxj_vol(diffh,gradu,e,eq)
+      call fluxj_ns(diffh,gradu,e,eq)
+! monolithic regularization never
+!     call fluxj(diffh,gradu,e,eq)
 
       call diffh2graduf(e,eq,graduf) ! on faces for QQ^T and igu_cmt
 
@@ -51,6 +51,7 @@
       include 'GEOM'
       include 'DG'      ! iface
       include 'CMTDATA'
+      include 'SOLN' ! for vz. goes away when agradu_ns works
 
 ! arguments
       real qminus(nx1*nz1,2*ndim,nelt,*)    ! intent(in)
@@ -61,13 +62,18 @@
       common /scrns/ superhugeh(lx1*ly1*lz1*lelt,3) ! like totalh, but super-huge
       common /scruz/ gradm1_t_overwrites(lx1*ly1*lz1*lelt) ! sigh
       real superhugeh,gradm1_t_overwrites
-      parameter (lfq=lx1*lz1*2*ldim*lelt)
-      common /ctmp0/ ftmp1(lfq),ftmp2(lfq)
-      real ftmp1,ftmp2
+!     common /ctmp0/ viscscr(lx1,ly1,lz1)
+!     real viscscr
+!     parameter (lfq=lx1*lz1*2*ldim*lelt)
+!     common /ctmp0/ ftmp1(lfq),ftmp2(lfq)
+!     real ftmp1,ftmp2
 
-      integer e, eq, n, npl, nf, f, i, k
+      integer eijk3(3,3,3)
+!     data eijk2 / 0, -1, 1, 0/
+      data eijk3
+     >/0,0,0,0,0,-1,0,1,0,0,0,1,0,0,0,-1,0,0,0,-1,0,1,0,0,0,0,0/
 
-      nvol = nx1*ny1*nz1*nelt
+      integer e, eq, n, npl, nf, f, i, k, eq2
 
       nxz    = nx1*nz1
       nfaces = 2*ndim
@@ -75,6 +81,7 @@
       nfq    = nf*nelt ! all points in a pile of faces
       if (ifsip) then
          const=-1.0 ! SIP
+         write(6,*) 'duh ais',const
       else
          const=1.0 ! Baumann-Oden
       endif
@@ -91,27 +98,101 @@
          l=l+nf
       enddo
 
-      do eq=1,toteq
+      call rzero(superhugeh,3*lx1*ly1*lz1*lelt)
+
+      nxyz  =nx1*ny1*nz1
+      nvol  =nxyz*nelt
+      ngradu=nxyz*toteq*3
+      do eq=2,toteq ! MASS DIFFUSION GETS ITS OWN BLOCK. somewhere
          call rzero(superhugeh,3*lx1*ly1*lz1*lelt)
          if (eq .eq. 4 .and. .not. if3d) goto 133
-! apply flux jacobian to get Ajac (U-{{U}})_i * n_k
-         do j=1,ndim
-            call rzero(ftmp1,nfq)
-            call agradu_sfc(ftmp1,qminus,hface(1,1,j),eq)
-! yes I know I should wrap this. Bite me.
-!           do k=1,ndim
-!              call agradu_ns_sfc(ftmp1,qminus,hface(1,1,k),
-!    >                               ftmp2,eq,j,k)
-!           enddo
-            call add_face2full_cmt(nelt,nx1,ny1,nz1,iface_flux,
-     >                      superhugeh(1,j),ftmp1)
-         enddo
+         l=1
+         m=1
+         do e=1,nelt
+            call rzero(gradu,ngradu) ! this too goes away when gradu is global
+            do j=1,ndim
+               do eq2=1,toteq ! sigh
+                  call add_face2full_cmt(1,nx1,ny1,nz1,iface_flux(1,e),
+     >                                gradu(1,eq2,j),hface(l,eq2,j))
+               enddo
+            enddo
+
+            l=l+nf ! index for hface, which is global. this all goes away
+                ! once you get rid of that execrable "element loop" in
+                ! compute_rhs_and_dt
+!           call fluxj_ns(superhugeh,... THIS will be correctly strided as well
+! JH110716 AND someday it will work
+!!            do j=1,ndim    ! flux direction
+!!               do k=1,ndim ! dU   direction
+!!                  ieijk=0
+!!                  if (eq .lt. toteq) ieijk=eijk3(eq-1,j,k) ! does this work in 2D?
+!!                  if (ieijk .eq. 0) then
+!!                     call agradu_ns(superhugeh(m,j),gradu(1,1,k),viscscr
+!!     >                             ,e,eq,j,k) ! the worst stride ever
+!!                  endif
+!!               enddo
+!!            enddo
+! JH110716 but not today. for now, here's a bloody chunk from agradu_ns
+! This is a disaster that I might want to program less cleverly
+            if (eq .lt. toteq) then
+! JH110716 Maxima routines added for every viscous flux.
+!          agradu_ns has failed all verification checks for homentropic vortex
+!          initialization.
+!          start over
+               if (eq.eq.2) then
+                  call A21kldUldxk(superhugeh(m,1),gradu,e)
+                  call A22kldUldxk(superhugeh(m,2),gradu,e)
+                  call A23kldUldxk(superhugeh(m,3),gradu,e)
+               elseif (eq.eq.3) then
+                  call A31kldUldxk(superhugeh(m,1),gradu,e)
+                  call A32kldUldxk(superhugeh(m,2),gradu,e)
+                  call A33kldUldxk(superhugeh(m,3),gradu,e)
+               elseif (eq.eq.4) then
+                  call A41kldUldxk(superhugeh(m,1),gradu,e)
+                  call A42kldUldxk(superhugeh(m,2),gradu,e)
+                  call A43kldUldxk(superhugeh(m,3),gradu,e)
+               endif
+
+            else ! Energy equation courtesy of thoroughly-checked maxima
+           ! until I can get agradu_ns working correctly
+               if (if3d) then
+                  call a53kldUldxk(superhugeh(m,3),gradu,e)
+               else
+                  call rzero(gradu(1,1,3),nxyz*toteq)
+                  call rzero(vz(1,1,1,e),nxyz)
+               endif
+               call a51kldUldxk(superhugeh(m,1),gradu,e)
+               call a52kldUldxk(superhugeh(m,2),gradu,e)
+            endif
+
+            m=m+nxyz
+
+         enddo ! element loop
+
+! gradm1_t uses /ctmp1/
          call gradm1_t(gradm1_t_overwrites,superhugeh(1,1),
      >                        superhugeh(1,2),superhugeh(1,3))
          call cmult(gradm1_t_overwrites,const,nvol)
          call add2(res1(1,1,1,1,eq),gradm1_t_overwrites,nvol)
 133      continue
-      enddo
+      enddo ! equation loop
+
+!!! apply flux jacobian to get Ajac (U-{{U}})_i * n_k
+!!! JH110116 DEPRECATED. Always apply A to volume, not surface points.
+!!!                      igtu_cmt will reflect this change in philosophy.
+!!!                      Less to debug that way
+!!         do j=1,ndim
+!!            call rzero(ftmp1,nfq)
+!!!           call agradu_sfc(ftmp1,qminus,hface(1,1,j),eq)
+!!! yes I know I should wrap this. Bite me.
+!!            do k=1,ndim
+!!               call agradu_ns_sfc(ftmp1,qminus,hface(1,1,k),
+!!     >                               ftmp2,eq,j,k)
+!!            enddo
+!!            call add_face2full_cmt(nelt,nx1,ny1,nz1,iface_flux,
+!!     >                      superhugeh(1,j),ftmp1)
+!!         enddo
+!
 
       return
       end
@@ -373,6 +454,7 @@ c computed by multiplying rho by u_j
 
       call copy(tu,ud,nxyz)
 
+! needs fleg or removal altogether. not good modularity
       call sub2(res1(1,1,1,e,eq),tu,nxyz)
 
       return

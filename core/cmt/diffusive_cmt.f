@@ -14,23 +14,35 @@
 
       nf = nx1*nz1*2*ndim*nelt
       const=-0.5
+! U-{{U}} on interior faces. first just do it on all faces.
       do ivar=1,toteq
          call add3(ummcu(1,ivar),uminus(1,ivar),uplus(1,ivar),nf)
          call cmult(ummcu(1,ivar),const,nf)        !         -
          call add2(ummcu(1,ivar),uminus(1,ivar),nf)!ummcu = U -{{U}}
       enddo
 
+! v+ undefined on boundary faces, so (I-0.5QQ^T) degenerates to 
+! [[U]] with respect to the Dirichlet boundary state
+      call imqqtu_dirichlet(ummcu,uminus,uplus)
+
       return
       end
 
 !-----------------------------------------------------------------------
 
-      subroutine fluxj_ns_vol(flux,gradu,e,eq)
+      subroutine imqqtu_dirichlet(ummcu,uminus,uplus)
+      return
+      end
+
+!-----------------------------------------------------------------------
+
+      subroutine fluxj_ns(flux,gradu,e,eq)
 ! viscous flux jacobian for compressible Navier-Stokes equations (NS)
 ! SOLN and CMTDATA are indexed, assuming vdiff has been filled by uservp
 ! somehow. In serious need of debugging and replacement.
       include 'SIZE'
-      include 'GEOM' ! diagnostic
+      include 'INPUT'! TRIAGE?
+      include 'SOLN' ! TRIAGE?
 
       parameter (ldd=lx1*ly1*lz1)
       common /ctmp1/ viscscr(lx1,ly1,lz1)
@@ -47,37 +59,49 @@
       call rzero(flux,n)
 
 ! This is a disaster that I might want to program less cleverly
-      do j=1,ndim
-         do k=1,ndim
-            ieijk=0
-            if (eq .lt. toteq) ieijk=eijk3(eq-1,j,k) ! does this work in 2D?
+      if (eq .lt. toteq) then ! TRIAGE. CAN'T GET AGRADU_NS to WORK
+                              ! for ENERGY EQUATION. MAXIMA ROUTINES
+                              ! BELOW
+!!      do j=1,ndim
+!!         do k=1,ndim
+!!            ieijk=0
+!!!           if (eq .lt. toteq .and. eq .gt. 1) ieijk=eijk3(eq-1,j,k) ! does this work in 2D?
+!!            if (eq.gt.1)ieijk=eijk3(eq-1,j,k) ! does this work in 2D?
+!!
+!!            if (ieijk .eq. 0) then
+!!              call agradu_ns(flux(1,j),gradu(1,1,k),viscscr,e,
+!!     >                           eq,j,k)
+!!            endif
+!!         enddo
+!!      enddo
+! JH110716 Maxima routines added for every viscous flux.
+!          agradu_ns has failed all verification checks for homentropic vortex
+!          initialization.
+!          start over
+        if (eq.eq.2) then
+           call A21kldUldxk(flux(1,1),gradu,e)
+           call A22kldUldxk(flux(1,2),gradu,e)
+           call A23kldUldxk(flux(1,3),gradu,e)
+        elseif (eq.eq.3) then
+           call A31kldUldxk(flux(1,1),gradu,e)
+           call A32kldUldxk(flux(1,2),gradu,e)
+           call A33kldUldxk(flux(1,3),gradu,e)
+        elseif (eq.eq.4) then
+           call A41kldUldxk(flux(1,1),gradu,e)
+           call A42kldUldxk(flux(1,2),gradu,e)
+           call A43kldUldxk(flux(1,3),gradu,e)
+        endif
 
-            if (ieijk .eq. 0) then
-              call agradu_ns_vol(flux(1,j),gradu(1,1,k),viscscr,e,
-     >                           eq,j,k)
-            endif
-         enddo
-      enddo
-
-      if (eq.eq.2) then
-      pi=4.0*atan(1.0)
-      do i=1,nxyz
-         x=xm1(i,1,1,e)-5.0
-         y=ym1(i,1,1,e)
-         r2=x**2+y**2
-         write(100,'(6e17.8)') x,y,flux(i,1),10.0*x*y/pi*exp(1-r2),
-     >                 flux(i,2),5.0*(y**2-x**2)/pi*exp(1-r2)
-      enddo
-      elseif (eq .eq. 3) then
-      pi=4.0*atan(1.0)
-      do i=1,nxyz
-         x=xm1(i,1,1,e)-5.0
-         y=ym1(i,1,1,e)
-         r2=x**2+y**2
-         write(200,'(6e17.8)') x,y,
-     >                 flux(i,1),5.0*(y**2-x**2)/pi*exp(1-r2),
-     >   flux(i,2),-10.0*x*y/pi*exp(1-r2)
-      enddo
+      else ! Energy equation courtesy of thoroughly-checked maxima
+           ! until I can get agradu_ns working correctly
+         if (if3d) then
+            call a53kldUldxk(flux(1,3),gradu,e)
+         else
+            call rzero(gradu(1,1,3),nx1*ny1*nz1*toteq)
+            call rzero(vz(1,1,1,e),nx1*ny1*nz1)
+         endif
+         call a51kldUldxk(flux(1,1),gradu,e)
+         call a52kldUldxk(flux(1,2),gradu,e)
       endif
 
       return
@@ -85,16 +109,21 @@
 
 !-----------------------------------------------------------------------
 
-      subroutine fluxj_vol(flux,gradu,e,eq)
+      subroutine fluxj(flux,gradu,e,eq)
+! JH110216 
+! I might end up using this, but just for \nabla (log rho) stuff due to
+! entropy viscosity. Equations (5.13-14) from Guermond & Popov (2014)
+! SIAM J. Appl. Math. 74 imply, however, that his preferred regularization
+! has extra off-diagonal terms in the momentum and energy equations.
+! Not sure where to put those yet.
       include 'SIZE'
-      include 'GEOM' ! diagnostic
 
       integer e,eq
       real flux(nx1*ny1*nz1,ndim),gradu(nx1*ny1*nz1,toteq,ndim)
 
       n=nx1*ny1*nz1
       do j=1,ndim
-         call agradu_vol(flux(1,j),gradu(1,1,j),e,eq,j)
+         call agradu(flux(1,j),gradu(1,1,j),e,eq,j)
       enddo
 
       return
@@ -103,6 +132,9 @@
 !-----------------------------------------------------------------------
 
       subroutine agradu_sfc(gijklu,gvar,du,eq)
+! JH110116 DEPRECATED. Always apply A to volume, not surface points.
+!                      igtu_cmt will reflect this change in philosophy.
+!                      Less to debug that way
       include 'SIZE'
       include 'SOLN'
       include 'CMTDATA'
@@ -147,7 +179,7 @@
 
 !-----------------------------------------------------------------------
 
-      subroutine agradu_vol(gijklu,dut,e,eq,jflux)
+      subroutine agradu(gijklu,dut,e,eq,jflux)
       include 'SIZE'
       include 'SOLN'
       include 'CMTDATA'
@@ -174,6 +206,9 @@
 !-----------------------------------------------------------------------
 
       subroutine agradu_ns_sfc(gijklu,gvar,du,visco,eq,jflux,kdir)
+! JH110116 DEPRECATED. Always apply A to volume, not surface points.
+!                      igtu_cmt will reflect this change in philosophy.
+!                      Less to debug that way
       include 'SIZE'
       include 'SOLN'
       include 'CMTDATA'
@@ -324,11 +359,13 @@
 
 !-----------------------------------------------------------------------
 
-      subroutine agradu_ns_vol(gijklu,dut,visco,e,eq,jflux,kdir)
+      subroutine agradu_ns(gijklu,dut,visco,e,eq,jflux,kdir)
+! JH110716. Declaring defeat. Discard and start over
       include 'SIZE'
       include 'SOLN'
       include 'INPUT'
       include 'CMTDATA'
+      include 'GEOM' ! diagnostic
 ! classic Navier-Stokes flux jacobian that computes viscous fluxes
 ! for everything except gas density.
 ! eq         index i; LHS equation
@@ -353,14 +390,20 @@
 !     data eijk2 / 0, -1, 1, 0/
       data eijk3
      >/0,0,0,0,0,-1,0,1,0,0,0,1,0,0,0,-1,0,0,0,-1,0,1,0,0,0,0,0/
+      real mu,lambda,kond,cv,uiui(lxyz)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! /CTMP0/ and /CTMP1/ IN USE BY CALLING SUBROUTINE; NO TOUCHY!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      if (eq .eq. 1) return
+      if (eq .eq. 1) return ! do this in plain old agradu
 
       npt=lxyz !%s/npt/lxyz/g is hard
 
       call rzero(visco,npt)
+      call rzero(uiui,npt)
 
-      if (eq .lt. 5) then
+      if (eq .lt. 5) then ! momentum fluxes via factorized viscous
+                          ! stress tensor
 
          if (jflux .eq. eq-1) then
             m=kdir
@@ -377,11 +420,11 @@
             endif
          endif
 
-         m=m+1 ! skip density
+         m=m+1
 
          call invcol2(visco,vtrans(1,1,1,e,irho),npt)
          call addcol3(gijklu,visco,dut(1,m),npt)
-! sigh. times like this I hate fortran
+! sigh. times like this I hate fortran. AdU-= drho/dx_k contrib
          if (m .eq. 2) call subcol4(gijklu,visco,dut,vx(1,1,1,e),npt)
          if (m .eq. 3) call subcol4(gijklu,visco,dut,vy(1,1,1,e),npt)
          if (m .eq. 4) call subcol4(gijklu,visco,dut,vz(1,1,1,e),npt)
@@ -389,105 +432,73 @@
       else ! energy equation is very different. and could use a rewrite
 
          if (jflux .eq. kdir) then
-            kp1=kdir+1
-
-            call copy(visco,vx(1,1,1,e),npt)
-            call vsq(visco,npt)
-            call addcol3(visco,vy(1,1,1,e),vy(1,1,1,e),npt)
-            if(if3d) call addcol3(visco,vz(1,1,1,e),vy(1,1,1,e),npt)
-! visco now contains uiui=2KE. only happens here
-            call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-            call addcol4(gijklu,visco,vdiff(1,1,1,e,iknd),dut(1,1),npt)
-! gdu-=(mu-k/cv)uiui*drho
-            call subcol4(gijklu,visco,vdiff(1,1,1,e,imu),dut(1,1),npt)
-            call cmult(visco,0.5,npt)
-            do ipt=1,npt
-                  visco(ipt)=visco(ipt)+
-     >            vtrans(ipt,1,1,e,icv)*t(ipt,1,1,e,1)/
-     >                             vtrans(ipt,1,1,e,irho) ! sigh
-            enddo
-! visco now contains E =(cvg*T+0.5*(ux**2+uy**2+uz**2))/rho
-! gdu-=k/cv*E*drho/rho
-            call subcol4(gijklu,visco,vdiff(1,1,1,e,iknd),dut(1,1),npt)
-
-            call add3(visco,vdiff(1,1,1,e,imu),vdiff(1,1,1,e,ilam),npt)
-            call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-! visco now contains mu+lambda. Much better
-! but I've completely given up on doing this through math.f
-            if (kp1 .eq. 2) then
-               do i=1,npt
-                  gijklu(i)=gijklu(i)-visco(i)*vx(i,1,1,e)**2*dut(i,1)
-               enddo
-            elseif(kp1 .eq. 3) then
-               do i=1,npt
-                  gijklu(i)=gijklu(i)-visco(i)*vy(i,1,1,e)**2*dut(i,1)
-               enddo
-            elseif(kp1 .eq. 4) then
-               do i=1,npt
-                  gijklu(i)=gijklu(i)-visco(i)*vz(i,1,1,e)**2*dut(i,1)
-               enddo
+! first dU1 flux, then dU2-dU3 for work term, then dU5
+            if (if3d) then ! uiui= 2KE/rho=u_i u_i
+               call vdot3(uiui,vx(1,1,1,e),vy(1,1,1,e),vz(1,1,1,e),
+     >                         vx(1,1,1,e),vy(1,1,1,e),vz(1,1,1,e),npt)
+            else
+               call vdot2(uiui,vx(1,1,1,e),vy(1,1,1,e),
+     >                         vx(1,1,1,e),vy(1,1,1,e),npt)
             endif
+            call invcol3(visco,vdiff(1,1,1,e,imu),
+     >                        vtrans(1,1,1,e,irho),npt)
+            call chsign(visco,npt)
+            do i=1,npt
+               visco(i)=visco(i)+0.5*vdiff(i,1,1,e,iknd)/
+     >                              vtrans(i,1,1,e,icv) !rho*cv
+            enddo
 
-! form mu-K/cv
-            call sub3(visco,vdiff(1,1,1,e,imu),vdiff(1,1,1,e,iknd),npt)
-            call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-            call addcol4(gijklu,visco,vx(1,1,1,e),dut(1,2),npt)
-            call addcol4(gijklu,visco,vy(1,1,1,e),dut(1,3),npt)
-            if(if3d) call addcol4(gijklu,visco,vz(1,1,1,e),dut(1,4),npt)
+            call addcol3(gijklu,visco,dut,npt) !*dU1, but one more to go
+
             call add3(visco,vdiff(1,1,1,e,imu),vdiff(1,1,1,e,ilam),npt)
             call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-            l=jflux+1
-            if (l.eq.2)
-     >         call addcol4(gijklu,visco,vx(1,1,1,e),dut(1,l),npt)
-            if (l.eq.3)
-     >         call addcol4(gijklu,visco,vy(1,1,1,e),dut(1,l),npt)
-            if (l.eq.4)
-     >         call addcol4(gijklu,visco,vz(1,1,1,e),dut(1,l),npt)
+            if(jflux .eq. 1) call col3(uiui,vx(1,1,1,e),vx(1,1,1,e),npt)
+            if(jflux .eq. 2) call col3(uiui,vy(1,1,1,e),vy(1,1,1,e),npt)
+            if(jflux .eq. 3) call col3(uiui,vz(1,1,1,e),vz(1,1,1,e),npt)
+            do i=1,npt ! someone else can vectorize this better
+               temp=t(i,1,1,e,1)
+               rho=vtrans(i,1,1,e,irho)
+               kond=vdiff(i,1,1,e,iknd)
+               gijklu(i)=gijklu(i)-(kond*temp/rho+visco(i)*uiui(i))*
+     >                   dut(i,1)
+            enddo ! done with *dU1 flux
 
-            l=toteq
-            call copy(visco,vdiff(1,1,1,e,iknd),npt)
-            call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-            call addcol3(gijklu,visco,dut(1,l),npt)
+            call invcol3(visco,vdiff(1,1,1,e,imu), ! visco=mu/rho
+     >                       vtrans(1,1,1,e,irho),npt)
+            call invcol3(uiui,vdiff(1,1,1,e,iknd), ! uiui=krcv
+     >                        vtrans(1,1,1,e,icv),npt) ! rho*cv
+            call sub2(visco,uiui,npt) ! visco=1/rho(mu-k/cv)
+            call addcol4(gijklu,visco,dut(1,2),vx(1,1,1,e),npt)
+            call addcol4(gijklu,visco,dut(1,3),vy(1,1,1,e),npt)
+            if (if3d)call addcol4(gijklu,visco,dut(1,4),vz(1,1,1,e),npt)
 
-         else ! dU is off-diagonal
+            call add3(visco,vdiff(1,1,1,e,imu),vdiff(1,1,1,e,ilam),npt)
+            m=jflux+1
+           if(m.eq.2)call addcol4(gijklu,visco,dut(1,m),vx(1,1,1,e),npt)
+           if(m.eq.3)call addcol4(gijklu,visco,dut(1,m),vy(1,1,1,e),npt)
+           if(m.eq.4)call addcol4(gijklu,visco,dut(1,m),vz(1,1,1,e),npt)
 
-            call add3(visco,vdiff(1,1,1,e,iknd),vdiff(1,1,1,e,ilam),npt)
-            jp1=jflux+1
-            kp1=kdir+1
-            call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-! just clobber visco relentlessly
-            if (jp1 .eq. 2) call col2(visco,vx(1,1,1,e),npt)
-            if (jp1 .eq. 3) call col2(visco,vy(1,1,1,e),npt)
-            if (jp1 .eq. 4) call col2(visco,vz(1,1,1,e),npt)
-            if (kp1 .eq. 2)
-     >         call subcol4(gijklu,visco,vx(1,1,1,e),dut(1,1),npt)
-            if (kp1 .eq. 3)
-     >         call subcol4(gijklu,visco,vy(1,1,1,e),dut(1,1),npt)
-            if (kp1 .eq. 4)
-     >         call subcol4(gijklu,visco,vz(1,1,1,e),dut(1,1),npt)
+            call addcol3(gijklu,uiui,dut(1,toteq),npt) !krcv*dU5
 
-            do l=2,ldim+1
-               lm1=l-1
-               if (eijk3(jflux,kdir,lm1) .eq. 0) then
-
-                  if (lm1 .eq. kdir) then
-                     call copy(visco,vdiff(1,1,1,e,ilam),npt)
-                     m=jflux+1
-                  else
-                     call copy(visco,vdiff(1,1,1,e,imu),npt)
-                     m=kdir+1
-                  endif
-
-                  call invcol2(visco,vtrans(1,1,1,e,irho),npt)
-                  if (m .eq. 2)
-     >            call addcol4(gijklu,visco,dut(1,l),vx(1,1,1,e),npt)
-                  if (m .eq. 3)
-     >            call addcol4(gijklu,visco,dut(1,l),vy(1,1,1,e),npt)
-                  if (m .eq. 4)
-     >            call addcol4(gijklu,visco,dut(1,l),vz(1,1,1,e),npt)
-                endif
-            enddo ! l
-         endif ! diagonal?
+         else ! dUeverythingelse
+! NOTATION ABUSE!!!!! uiui=u_{jflux}, visco=u_{kdir} !!!!!!!!!!
+! math.f not to be used for actual functions of transport coefs
+            if (jflux.eq.1) call copy(uiui, vx(1,1,1,e),npt)
+            if (jflux.eq.2) call copy(uiui, vy(1,1,1,e),npt)
+            if (jflux.eq.3) call copy(uiui, vz(1,1,1,e),npt)
+            if (kdir .eq.1) call copy(visco,vx(1,1,1,e),npt) 
+            if (kdir .eq.2) call copy(visco,vy(1,1,1,e),npt) 
+            if (kdir .eq.3) call copy(visco,vz(1,1,1,e),npt) 
+            do i=1,npt ! again, someone else can vectorize this
+               mu    =vdiff (i,1,1,e,imu)
+               lambda=vdiff (i,1,1,e,ilam)
+               rrho  =vtrans(i,1,1,e,irho)
+               gijklu(i)=gijklu(i)-(mu+lambda)*rrho*dut(i,1)*
+     >                                         uiui(i)*visco(i) ! ujuk
+               gijklu(i)=gijklu(i)+mu*visco(i)*rrho*dut(i,jflux+1)
+               gijklu(i)=gijklu(i)+lambda*uiui(i)*rrho*dut(i,kdir+1)
+            enddo
+         endif
 
       endif ! energy equation
 
@@ -547,6 +558,353 @@
          enddo
          enddo
          enddo
+      enddo
+      return
+      end
+
+!-----------------------------------------------------------------------
+! TRIAGE BELOW UNTIL I CAN FIX AGRADU_NS
+!-----------------------------------------------------------------------
+      subroutine a51kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU2x=dU(i,2,1)
+         dU3x=dU(i,3,1)
+         dU4x=dU(i,4,1)
+         dU5x=dU(i,5,1)
+         dU1y=dU(i,1,2)
+         dU2y=dU(i,2,2)
+         dU3y=dU(i,3,2)
+         dU4y=dU(i,4,2)
+         dU5y=dU(i,5,2)
+         dU1z=dU(i,1,3)
+         dU2z=dU(i,2,3)
+         dU3z=dU(i,3,3)
+         dU4z=dU(i,4,3)
+         dU5z=dU(i,5,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         cv    =vtrans(i,1,1,ie,icv)/rho
+         lambda=vdiff(i,1,1,ie,ilam)
+         mu    =vdiff(i,1,1,ie,imu)
+         K     =vdiff(i,1,1,ie,iknd)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         E     =U(i,1,1,toteq,ie)/rho
+         lambdamu=lambda+mu
+         kmcvmu=K-cv*mu
+         flux(i)=
+     >(K*dU5x+cv*lambda*u1*dU4z-kmcvmu*u3*dU4x+cv*lambda*u1*dU3y
+     1   -kmcvmu*u2*dU3x+cv*mu*u3*dU2z+cv*mu*u2*dU2y+(cv*lambda-
+     2   K+2*cv*mu)*u1*dU2x-cv*lambdamu*u1*u3*dU1z-cv*lambdamu
+     3   *u1*u2*dU1y+(K*u3**2-cv*mu*u3**2+K*u2**2-cv*mu*u2**2-cv*la
+     4   mbda*u1**2+K*u1**2-2*cv*mu*u1**2-E*K)*dU1x)/(cv*rho)
+      enddo
+      return
+      end
+
+      subroutine a52kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU2x=dU(i,2,1)
+         dU3x=dU(i,3,1)
+         dU4x=dU(i,4,1)
+         dU5x=dU(i,5,1)
+         dU1y=dU(i,1,2)
+         dU2y=dU(i,2,2)
+         dU3y=dU(i,3,2)
+         dU4y=dU(i,4,2)
+         dU5y=dU(i,5,2)
+         dU1z=dU(i,1,3)
+         dU2z=dU(i,2,3)
+         dU3z=dU(i,3,3)
+         dU4z=dU(i,4,3)
+         dU5z=dU(i,5,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         cv    =vtrans(i,1,1,ie,icv)/rho
+         lambda=vdiff(i,1,1,ie,ilam)
+         mu    =vdiff(i,1,1,ie,imu)
+         K     =vdiff(i,1,1,ie,iknd)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         E     =U(i,1,1,toteq,ie)/rho
+         lambdamu=lambda+mu
+         kmcvmu=K-cv*mu
+         flux(i)=
+     >(K*dU5y+cv*lambda*u2*dU4z-kmcvmu*u3*dU4y+cv*mu*u3*dU3z+(cv
+     1   *lambda-K+2*cv*mu)*u2*dU3y+cv*mu*u1*dU3x-kmcvmu*u1*dU2y+
+     2   cv*lambda*u2*dU2x-cv*lambdamu*u2*u3*dU1z+(K*u3**2-cv*mu
+     3   *u3**2-cv*lambda*u2**2+K*u2**2-2*cv*mu*u2**2+K*u1**2-cv*mu*
+     4   u1**2-E*K)*dU1y-cv*lambdamu*u1*u2*dU1x)/(cv*rho)
+      enddo
+      return
+      end
+      subroutine a53kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU2x=dU(i,2,1)
+         dU3x=dU(i,3,1)
+         dU4x=dU(i,4,1)
+         dU5x=dU(i,5,1)
+         dU1y=dU(i,1,2)
+         dU2y=dU(i,2,2)
+         dU3y=dU(i,3,2)
+         dU4y=dU(i,4,2)
+         dU5y=dU(i,5,2)
+         dU1z=dU(i,1,3)
+         dU2z=dU(i,2,3)
+         dU3z=dU(i,3,3)
+         dU4z=dU(i,4,3)
+         dU5z=dU(i,5,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         cv    =vtrans(i,1,1,ie,icv)/rho
+         lambda=vdiff(i,1,1,ie,ilam)
+         mu    =vdiff(i,1,1,ie,imu)
+         K     =vdiff(i,1,1,ie,iknd)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         E     =U(i,1,1,toteq,ie)/rho
+         lambdamu=lambda+mu
+         kmcvmu=K-cv*mu
+         flux(i)=
+     >(K*(dU5z-E*dU1z)+c_v*u3*(lambda*dU4z+2*mu*dU4z+lambda*dU3y+lambda
+     1   *dU2x)-K*u3*dU4z+c_v*mu*u2*(dU4y+dU3z)+c_v*mu*u1*(dU4x+dU2z)-
+     2   K*u2*dU3z-K*u1*dU2z-c_v*(lambda+2*mu)*u3**2*dU1z+K*u3**2*dU1z+
+     3   K*u2**2*dU1z-c_v*mu*u2**2*dU1z+K*u1**2*dU1z-c_v*mu*u1**2*dU1z-c
+     4   _v*(lambda+mu)*u2*u3*dU1y-c_v*(lambda+mu)*u1*u3*dU1x)/(c_v*rho)
+      enddo
+      return
+      end
+
+      subroutine A21kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU2x=dU(i,2,1)
+         dU1y=dU(i,1,2)
+         dU3y=dU(i,3,2)
+         dU1z=dU(i,1,3)
+         dU4z=dU(i,4,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         lambda=vdiff(i,1,1,ie,ilam)
+         mu    =vdiff(i,1,1,ie,imu)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         lambdamu=lambda+2.0*mu
+         flux(i)=
+     >(lambda*(dU4z+dU3y-u3*dU1z-u2*dU1y)+lambdamu*(dU2x-u1*dU1x))/rho
+      enddo
+      return
+      end
+      subroutine A22kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU3x=dU(i,3,1)
+         dU1y=dU(i,1,2)
+         dU2y=dU(i,2,2)
+         rho   =vtrans(i,1,1,ie,irho)
+         mu    =vdiff(i,1,1,ie,imu)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         flux(i)=mu*(dU3x+dU2y-u1*dU1y-u2*dU1x)/rho
+      enddo
+      return
+      end
+      subroutine A23kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU4x=dU(i,4,1)
+         dU1z=dU(i,1,3)
+         dU2z=dU(i,2,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         mu    =vdiff(i,1,1,ie,imu)
+         u1    =vx(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         flux(i)=mu*(dU4x+dU2z-u1*dU1z-u3*dU1x)/rho
+      enddo
+      return
+      end
+
+      subroutine A31kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU3x=dU(i,3,1)
+         dU1y=dU(i,1,2)
+         dU2y=dU(i,2,2)
+         rho   =vtrans(i,1,1,ie,irho)
+         mu    =vdiff(i,1,1,ie,imu)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         flux(i)=mu*(dU3x+dU2y-u1*dU1y-u2*dU1x)/rho
+      enddo
+      return
+      end
+      subroutine A32kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU2x=dU(i,2,1)
+         dU1y=dU(i,1,2)
+         dU3y=dU(i,3,2)
+         dU1z=dU(i,1,3)
+         dU4z=dU(i,4,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         lambda=vdiff(i,1,1,ie,ilam)
+         mu    =vdiff(i,1,1,ie,imu)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         lambdamu=lambda+2.0*mu
+         flux(i)=(lambda*(dU4z+dU2x-u3*dU1z-u1*dU1x)+
+     >   lambdamu*(dU3y-u2*dU1y))/rho
+      enddo
+      return
+      end
+      subroutine A33kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1y=dU(i,1,2)
+         dU4y=dU(i,4,2)
+         dU1z=dU(i,1,3)
+         dU3z=dU(i,3,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         mu    =vdiff(i,1,1,ie,imu)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         flux(i)=mu*(dU4y+dU3z-u2*dU1z-u3*dU1y)/rho
+      enddo
+      return
+      end
+
+      subroutine A41kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU4x=dU(i,4,1)
+         dU1z=dU(i,1,3)
+         dU2z=dU(i,2,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         mu    =vdiff(i,1,1,ie,imu)
+         u1    =vx(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         flux(i)=mu*(dU4x+dU2z-u1*dU1z-u3*dU1x)/rho
+      enddo
+      return
+      end
+      subroutine A42kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1y=dU(i,1,2)
+         dU4y=dU(i,4,2)
+         dU1z=dU(i,1,3)
+         dU3z=dU(i,3,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         mu    =vdiff(i,1,1,ie,imu)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         flux(i)=mu*(dU4y+dU3z-u2*dU1z-u3*dU1y)/rho
+      enddo
+      return
+      end
+      subroutine A43kldUldxk(flux,dU,ie)
+      include 'SIZE'
+      include 'SOLN'
+      include 'CMTDATA' ! gradu lurks
+      real lambda,mu,cv,K,rho,E,kmcvmu,lambdamu
+      real dU(nx1*ny1*nz1,toteq,3)
+      real flux(nx1*ny1*nz1)
+      npt=lx1*ly1*lz1
+      do i=1,npt
+         dU1x=dU(i,1,1)
+         dU2x=dU(i,2,1)
+         dU1y=dU(i,1,2)
+         dU3y=dU(i,3,2)
+         dU1z=dU(i,1,3)
+         dU4z=dU(i,4,3)
+         rho   =vtrans(i,1,1,ie,irho)
+         lambda=vdiff(i,1,1,ie,ilam)
+         mu    =vdiff(i,1,1,ie,imu)
+         u1    =vx(i,1,1,ie)
+         u2    =vy(i,1,1,ie)
+         u3    =vz(i,1,1,ie)
+         lambdamu=lambda+2.0*mu
+         flux(i)=(lambda*(dU3y+dU2x-u2*dU1y-u1*dU1x)+
+     >lambdamu*(dU4z-u3*dU1z))/rho
       enddo
       return
       end

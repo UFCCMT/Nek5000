@@ -8,6 +8,9 @@
       real    bcq(nx1*nz1,2*ndim,nelt,nstate) 
       real    flux(nx1*nz1,2*ndim,nelt,*)
 
+! JH102016
+! rind state for inviscid fluxes is different from viscous fluxes? not
+! sure what the right thing to do is.
       call slipwall_rflu(nstate,f,e,faceq,bcq,flux) ! calls RindState stuff
 
       return

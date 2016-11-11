@@ -215,7 +215,8 @@
       nface = 2*ndim
       nxz   = nx1*nz1
       nxzd  = nxd*nzd
-      ifield= 1
+      ifield= 1 ! You need to figure out the best way of dealing with
+                ! this variable
 
 !     if (outflsub)then
 !        call maxMachnumber
