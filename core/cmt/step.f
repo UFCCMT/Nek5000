@@ -138,7 +138,7 @@ c
 
 !-----------------------------------------------------------------------
 
-      subroutine compute_h(h,x,y,z)
+      subroutine compute_grid_h(h,x,y,z)
 ! Richard Pasquetti SEM "grid spacing h." good parallelogram/piped stuff
       include 'SIZE'
       include 'INPUT'
@@ -214,11 +214,18 @@ c
                   c(2)=y6-y5
                   c(3)=z6-z5
                   if (if3d) then
+                     fact=0.125 ! h doesn't reach into corners of neighboring elements
+                     if (ixp.eq.ix.or.ixm.eq.ix) fact=2.0*fact
+                     if (iym.eq.iy.or.iyp.eq.iy) fact=2.0*fact
+                     if (izm.eq.iz.or.izp.eq.iz) fact=2.0*fact
                      call cross(d,a,b)
-                     h(ix,iy,iz,e)=0.125*dot(c,d,3)
+                     h(ix,iy,iz,e)=fact*dot(c,d,3)
                      h(ix,iy,iz,e)=abs(h(ix,iy,iz,e))**(1.0/3.0)
                   else
-                     h(ix,iy,iz,e)=sqrt(0.25*abs(a(1)*b(2)-a(2)*b(1)))
+                     fact=0.25
+                     if (ixp.eq.ix.or.ixm.eq.ix) fact=2.0*fact
+                     if (iym.eq.iy.or.iyp.eq.iy) fact=2.0*fact
+                     h(ix,iy,iz,e)=sqrt(fact*abs(a(1)*b(2)-a(2)*b(1)))
                   endif
                enddo
             enddo
@@ -239,5 +246,82 @@ c
          tmp=max(tmp,abs(s*a(i)/b(i)/b(i)))
       enddo
       col2m=glamax(tmp,1)
+      return
+      end
+
+!-----------------------------------------------------------------------
+
+      subroutine compute_mesh_h(h,x,y,z)
+! Zingan's DGFEM formula: h=minimum distance between vertices divided by
+!                         polynomial order
+      include 'SIZE'
+      include 'INPUT'
+      real h(nelt)             ! intent(out)
+      real x(nx1,ny1,nz1,nelt) ! intent(in)
+      real y(nx1,ny1,nz1,nelt) ! intent(in)
+      real z(nx1,ny1,nz1,nelt) ! intent(in)
+      real xcrn(8),ycrn(8),zcrn(8)
+      integer e
+      integer icalld
+      data icalld /0/
+      save icalld
+      
+      if (icalld .eq. 1) then
+         return
+      else
+         icalld=1
+      endif
+
+      ncrn=2**ndim
+      rp=1.0/((nx1-1))
+
+      do e=1,nelt
+         call rzero(zcrn,8)
+         k1=1
+         k2=nz1
+         j1=1
+         j2=ny1
+         i1=1
+         i2=nx1
+         xcrn(1) = x(i1,j1,k1,e)
+         xcrn(2) = x(i2,j1,k1,e)
+         xcrn(3) = x(i1,j2,k1,e)
+         xcrn(4) = x(i2,j2,k1,e)
+         ycrn(1) = y(i1,j1,k1,e)
+         ycrn(2) = y(i2,j1,k1,e)
+         ycrn(3) = y(i1,j2,k1,e)
+         ycrn(4) = y(i2,j2,k1,e)
+         if (if3d) then
+            xcrn(5) = x(i1,j1,k2,e)
+            xcrn(6) = x(i2,j1,k2,e)
+            xcrn(7) = x(i1,j2,k2,e)
+            xcrn(8) = x(i2,j2,k2,e)
+            ycrn(5) = y(i1,j1,k2,e)
+            ycrn(6) = y(i2,j1,k2,e)
+            ycrn(7) = y(i1,j2,k2,e)
+            ycrn(8) = y(i2,j2,k2,e)
+            zcrn(1) = z(i1,j1,k1,e)
+            zcrn(2) = z(i2,j1,k1,e)
+            zcrn(3) = z(i1,j2,k1,e)
+            zcrn(4) = z(i2,j2,k1,e)
+            zcrn(5) = z(i1,j1,k2,e)
+            zcrn(6) = z(i2,j1,k2,e)
+            zcrn(7) = z(i1,j2,k2,e)
+            zcrn(8) = z(i2,j2,k2,e)
+         endif
+         dist=1.0e36
+         do ic1=1,ncrn
+            do ic2=1,ncrn
+               if (ic2 .ne. ic1) then
+                  dtmp=(xcrn(ic2)-xcrn(ic1))**2+
+     >                 (ycrn(ic2)-ycrn(ic1))**2+
+     >                 (zcrn(ic2)-zcrn(ic1))**2
+                  dist=min(dist,sqrt(dtmp))
+               endif
+            enddo
+         enddo
+         h(e)=dist*rp
+      enddo
+
       return
       end

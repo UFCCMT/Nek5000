@@ -126,8 +126,7 @@
       real flux(nx1*ny1*nz1,ndim),du(nx1*ny1*nz1,toteq,ndim)
 
 ! \tau_{ij} and u_j \tau_{ij}.  lambda=0 and kappa=0 for EVM
-      call fluxj_ns(flux,du,e,eq)
-
+      call fluxj_ns (flux,du,e,eq)
       call fluxj_evm(flux,du,e,eq)
 
 ! no idea where phi goes
@@ -232,50 +231,46 @@
       n=nx1*ny1*nz1
 
 ! diffusion due to grad rho
-      if (eq.lt.toteq) then
-         if (eq .eq. 1) call rone(viscscr,n)
-         if (eq .eq. 2) call copy(viscscr,vx(1,1,1,e),n)
-         if (eq .eq. 3) call copy(viscscr,vy(1,1,1,e),n)
-         if (eq .eq. 4) then
-            if (if3d) then
-               call copy(viscscr,vz(1,1,1,e),n)
-            else
-               if (nio.eq.0) write(6,*) 'eq==4 in 2D call to fluxj_evm'
-               call exitt
-            endif
-         endif
-         call col2(viscscr,vdiff(1,1,1,e,inus),n)
-!        call col2(viscscr,u(1,1,1,e,1),n) ! some get mult by rho?
+      if (eq .eq. 1) then
          do j=1,ndim ! flux+= viscscr*nu_s*grad (phig*rho)
-            call addcol3(flux(1,j),viscscr,du(1,1,j),n)
+            call addcol3(flux(1,j),vdiff(1,1,1,e,inus),du(1,1,j),n)
          enddo
+      else
+         if (eq.lt.toteq) then
+            call copy(viscscr,du(1,1,eq-1),n)
+            call col2(viscscr,vdiff(1,1,1,e,inus),n)
+            call addcol3(flux(1,1),viscscr,vx(1,1,1,e),n)
+            call addcol3(flux(1,2),viscscr,vy(1,1,1,e),n)
+            if (if3d) call addcol3(flux(1,3),viscscr,vz(1,1,1,e),n)
 
-      else ! energy equation
+         else ! energy equation
 
-         if(if3d) then ! mass diffusion term
-            call vdot3(viscscr,vx(1,1,1,e),vy(1,1,1,e),vz(1,1,1,e),
-     >                         vx(1,1,1,e),vy(1,1,1,e),vz(1,1,1,e),n)
-         else
-            call vdot2(viscscr,vx(1,1,1,e),vy(1,1,1,e),
-     >                         vx(1,1,1,e),vy(1,1,1,e),n)
-         endif
-         call col2(viscscr,phig(1,1,1,e),n)
-         call col2(viscscr,vdiff(1,1,1,e,inus),n)
-         do j=1,ndim
-            call addcol3(flux(1,j),du(1,1,j),viscscr,n)
-         enddo
+            if(if3d) then ! mass diffusion term
+               call vdot3(viscscr,vx(1,1,1,e),vy(1,1,1,e),vz(1,1,1,e),
+     >                            vx(1,1,1,e),vy(1,1,1,e),vz(1,1,1,e),n)
+            else
+               call vdot2(viscscr,vx(1,1,1,e),vy(1,1,1,e),
+     >                            vx(1,1,1,e),vy(1,1,1,e),n)
+            endif
+            call col2(viscscr,phig(1,1,1,e),n)
+            call col2(viscscr,vdiff(1,1,1,e,inus),n)
+            do j=1,ndim
+               call addcol3(flux(1,j),du(1,1,j),viscscr,n)
+            enddo
 
-         do j=1,ndim
-         do eq2=2,ndim+1
-            call col4(viscscr,du(1,eq2,j),u(1,1,1,eq2,e),
-     >                        vdiff(1,1,1,e,inus),n)
-            call invcol2(viscscr,vtrans(1,1,1,e,irho),n) ! scr=nu_s*U/rho
-            call sub2(flux(1,j),viscscr,n)
-         enddo
-         call addcol3(flux(1,j),du(1,toteq,j),vdiff(1,1,1,e,inus),n)
-         enddo
+            do j=1,ndim
+               do eq2=2,ndim+1
+                  call col4(viscscr,du(1,eq2,j),u(1,1,1,eq2,e),
+     >                           vdiff(1,1,1,e,inus),n)
+                  call invcol2(viscscr,vtrans(1,1,1,e,irho),n) ! scr=nu_s*U/rho
+                  call sub2(flux(1,j),viscscr,n)
+               enddo
+               call addcol3(flux(1,j),du(1,toteq,j),vdiff(1,1,1,e,inus),
+     >                      n)
+            enddo
+         endif ! eq<toteq?
 
-      endif ! eq<toteq?
+      endif ! eq==1?
 
       return
       end

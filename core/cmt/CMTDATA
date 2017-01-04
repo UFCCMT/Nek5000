@@ -12,9 +12,9 @@
      $                 ,   totalh(lxd*lyd*lzd,3)
 
       COMMON /FORCEDATA/   usrf (lx1,ly1,lz1,5)
-      common /planned_Additions/ c_sub_e,cmax,meshh(lelt),maxdiff,
-     >        gridh(lx1*ly1*lz1,lelt),nu_s
-      real meshh,maxdiff,gridh,nu_s
+      common /planned_Additions/ c_sub_e,c_max,meshh(lelt),maxdiff,
+     >        gridh(lx1*ly1*lz1,lelt),nu_s,rhomax(lelt)
+      real meshh,maxdiff,gridh,nu_s,rhomax
 c We assume we will be working with one gas.
 c To begin with we assume calorically perfect gas.
 c In near future we relax the constraint to thermally perfect gas.
