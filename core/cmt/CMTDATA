@@ -1,3 +1,6 @@
+C> @file CMTDATA include file for CMT variables and common blocks
+C> @var U(lxyz,5,lelt) contains nodal values of the five conserved unknowns at
+C> each of lx1*ly1*lz1 grid points for all elements
       COMMON /solnconsvar/ U(LX1,LY1,LZ1,TOTEQ,LELCMT) 
  
       COMMON /otherpvar/ PHIG(LX1,LY1,LZ1,LELCMT)

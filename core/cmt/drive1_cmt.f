@@ -1,6 +1,8 @@
+C> @file drive1_cmt.f high-level driver for CMT-nek
 c-----------------------------------------------------------------------
+C> Branch from subroutine nek_advance in core/drive1.f
+C> Advance CMT-nek one time step within nek5000 time loop
       subroutine cmt_nek_advance
-c
 c     Solve the Euler equations
 
       include 'SIZE'
@@ -91,8 +93,9 @@ c dump out particle information.
 
 c-----------------------------------------------------------------------
 
+C> Compute right-hand-side of the semidiscrete conservation law
+C> Store it in res1
       subroutine compute_rhs_and_dt
-!> doxygen comments look like this
       include 'SIZE'
       include 'TOTAL'
       include 'DG'
@@ -252,7 +255,7 @@ c-----------------------------------------------------------------------
       return
       end
 !-----------------------------------------------------------------------
-
+C> Compute coefficients for Runge-Kutta stages \cite{TVDRK}
       subroutine set_tstep_coef
       include 'SIZE'
       include 'TSTEP'

@@ -1,3 +1,7 @@
+C> @file eqnsolver_cmt.f Routines for entire terms on RHS
+
+C> Volume integral for diffusive terms. Compute \mathbf{H}^d
+C> and store it for one element. Store faces of \mathbf{H}^d for IGU. 
       subroutine viscous_cmt(e,eq)
       include  'SIZE'
       include  'CMTDATA'
@@ -39,6 +43,7 @@
 
 !-----------------------------------------------------------------------
 
+C> G^T U
       subroutine igtu_cmt(qminus,ummcu,hface)
 
 !     Vol integral [[u]].{{gradv}}. adapted from Lu's dgf3.f;
@@ -155,6 +160,7 @@
 
 !-----------------------------------------------------------------------
 
+C> \nabla v \cdot \mathbf{H}
       subroutine convective_cmt(e,eq)
 ! JH081916 convective flux divergence integrated in weak form and
 !          placed in res1.
@@ -180,6 +186,7 @@
 
 !-----------------------------------------------------------------------
 
+C> Convective fluxes \mathbf{H}^c 
       subroutine evaluate_dealiased_conv_h(e,eq)
 ! computed as products between primitive variables and conserved variables.
 ! if you want to write rho u_i u_j as (rho u_i) (rho u_j) (rho^{-1}), this
