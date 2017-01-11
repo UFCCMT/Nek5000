@@ -177,12 +177,12 @@ C> Store it in res1
 !     !eq = 4 -------- z  momentum 
 !     !eq = 5 -------- Energy Equation 
 
-!-----------------------------------------------------------------------
-! JH060314 Compute inviscid surface fluxes now that we have the
-!          primitive variables.
-!-----------------------------------------------------------------------
+C> Restrict via \f$\mathbf{E}\f$ to get primitive and conserved variables
+C> on interior faces \f$\mathbf{U}^-\f$ and neighbor faces
+C> \f$\mathbf{U}^+\f$; store in CMTSURFLX
       call fluxes_full_field
 
+C> res1+=\f$\oint \mathbf{H}^{c\ast}\cdot\mathbf{n}dA\f$ on face points
       nstate=nqq
       nfq=nx1*nz1*2*ndim*nelt
       iqm =1
@@ -207,6 +207,7 @@ C> Store it in res1
 ! SEQUENTIALLY IN /CMTSURFLX/ i.e. that iu2=iu1+1, etc.
 ! CMTDATA BETTA REFLECT THIS!!!
 !***********************************************************************
+C> res1+=\f$\int_{\Gamma} \{\{\mathbf{A}^{\intercal}\nabla v\}\} \cdot \left[\mathbf{U}\right] dA\f$
       ium=(iu1-1)*nfq+iqm
       iup=(iu1-1)*nfq+iqp
       call   imqqtu(flux(iuj),flux(ium),flux(iup))
@@ -215,6 +216,8 @@ C> Store it in res1
       dumchars='after_igtu'
 !     call dumpresidue(dumchars,999)
 
+C> res1+=\f$\int \left(\nabla v\right) \cdot \left(\mathbf{H}^c+\mathbf{H}^d\right)dV\f$ 
+C> for each equation (inner), one element at a time (outer)
       do e=1,nelt
 !-----------------------------------------------------------------------
 ! JH082216 Since the dawn of CMT-nek we have called this particular loop
@@ -243,7 +246,7 @@ C> Store it in res1
       dumchars='after_elm'
 !     call dumpresidue(dumchars,999)
 
-! get the rest of Hij^{d*}
+C> res1+=\f$\int_{\Gamma} \{\{\mathbf{A}\nabla \mathbf{U}\}\} \cdot \left[v\right] dA\f$
       call igu_cmt(flux(iqp),graduf,flux(iqm))
       do eq=1,toteq
          ieq=(eq-1)*ndg_face+iqp
