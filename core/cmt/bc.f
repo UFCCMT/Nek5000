@@ -1,3 +1,4 @@
+C> @file Routines for boundary conditions
       subroutine bcflux(flux,agradu,qminus)
 ! Need proper indexing and nekasgn & cmtasgn calls
       include 'SIZE'

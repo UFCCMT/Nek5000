@@ -1,3 +1,5 @@
+C> @file routines for diffusive fluxes.
+C> Some surface. Some volume. All pain. Jacobians and other factorizations.
       subroutine imqqtu(ummcu,uminus,uplus)
 ! Computes (I-0.5*QQT)U for all five conserved variables.
 ! See call in compute_rhs_and_dt for important documentation

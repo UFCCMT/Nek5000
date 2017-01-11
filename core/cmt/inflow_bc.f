@@ -1,3 +1,4 @@
+C> @file Dirichlet states for inflow boundary conditions
       subroutine inflow2(nvar,f,e,faceq,bcq)
 ! JH121416 I think bcq is now set up correctly, even for viscous fluxes, in inflow
 !          THIS ROUTINE SHOULO NOT BE NECESSARY FOR INFLOW AND APPEARS TO HAVE NO

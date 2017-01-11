@@ -1,3 +1,4 @@
+C> @file time stepping and mesh spacing routines
       subroutine setdtcmt
 !--------------------------------------------------------------
 ! JH072914 now summed instead of maximized for compressible flow

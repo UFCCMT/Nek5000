@@ -1,7 +1,7 @@
-C> @file eqnsolver_cmt.f Routines for entire terms on RHS
+C> @file Routines for entire terms on RHS. Mostly volume integrals
 
-C> Volume integral for diffusive terms. Compute \mathbf{H}^d
-C> and store it for one element. Store faces of \mathbf{H}^d for IGU. 
+C> Volume integral for diffusive terms. Compute \f$\mathbf{H}^d\f$
+C> and store it for one element. Store faces of \f$\mathbf{H}^d\f$ for IGU. 
       subroutine viscous_cmt(e,eq)
       include  'SIZE'
       include  'CMTDATA'
@@ -43,7 +43,7 @@ C> and store it for one element. Store faces of \mathbf{H}^d for IGU.
 
 !-----------------------------------------------------------------------
 
-C> G^T U
+C> \f$G^T U\f$
       subroutine igtu_cmt(qminus,ummcu,hface)
 
 !     Vol integral [[u]].{{gradv}}. adapted from Lu's dgf3.f;
@@ -160,7 +160,9 @@ C> G^T U
 
 !-----------------------------------------------------------------------
 
-C> \nabla v \cdot \mathbf{H}
+C> \ingroup convhvol
+C> @{
+C> Convective volume terms formed and differentiated^T here
       subroutine convective_cmt(e,eq)
 ! JH081916 convective flux divergence integrated in weak form and
 !          placed in res1.
@@ -183,10 +185,11 @@ C> \nabla v \cdot \mathbf{H}
 
       return
       end
+C> @}
 
-!-----------------------------------------------------------------------
-
-C> Convective fluxes \mathbf{H}^c 
+C> \ingroup convhvol
+C> @{
+C> Convective pointwise flux function \f$\mathbf{H}^c\f$ on fine grid.
       subroutine evaluate_dealiased_conv_h(e,eq)
 ! computed as products between primitive variables and conserved variables.
 ! if you want to write rho u_i u_j as (rho u_i) (rho u_j) (rho^{-1}), this
@@ -251,8 +254,6 @@ c computed by multiplying rho by u_j
       return
       end
 
-!-----------------------------------------------------------------------
-
       subroutine evaluate_aliased_conv_h(e,eq)
 ! computed as products between primitive variables and conserved variables.
 ! if you want to write rho u_i u_j as (rho u_i) (rho u_j) (rho^{-1}), this
@@ -303,9 +304,11 @@ c computed by multiplying rho by u_j
 
       return
       end
+C> @}
 
-!----------------------
-
+C> \ingroup convhvol
+C> @{
+C> \f$(\nabla v)\cdot \mathbf{H}^c=\mathcal{I}^{\intercal}\mathbf{D}^{\intercal}\cdots\f$ for equation eq, element e
       subroutine flux_div_integral_dealiased(e,eq)
       include  'SIZE'
       include  'INPUT'
@@ -365,7 +368,7 @@ c computed by multiplying rho by u_j
       return
       end
 
-!----------------------
+C> @}
 
       subroutine flux_div_integral_aliased(e,eq)
       include  'SIZE'

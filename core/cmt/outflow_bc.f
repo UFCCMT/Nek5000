@@ -1,3 +1,4 @@
+C> @file Dirichlet states for outflow boundary conditions
       subroutine outflow2(nvar,f,e,faceq,bcq)
       include 'SIZE'
       include 'INPUT'

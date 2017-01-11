@@ -1,3 +1,4 @@
+C> @file mid-level initialization drivers. Not long for this world.
 c-----------------------------------------------------------------------
       subroutine nek_cmt_init
       include 'SIZE'

@@ -1,3 +1,4 @@
+C> @file Routines for surface terms on RHS.
       subroutine fluxes_full_field
 !-----------------------------------------------------------------------
 ! JH060314 First, compute face fluxes now that we have the primitive variables
