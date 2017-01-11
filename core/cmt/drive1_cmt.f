@@ -1,7 +1,5 @@
-C> @file high-level driver for CMT-nek
-
+C> @file drive1_cmt.f high-level driver for CMT-nek
 C> \defgroup convhvol Volume integral terms for inviscid fluxes
-c-----------------------------------------------------------------------
 C> Branch from subroutine nek_advance in core/drive1.f
 C> Advance CMT-nek one time step within nek5000 time loop
       subroutine cmt_nek_advance

@@ -1,4 +1,4 @@
-C> @file Dirichlet states for wall boundary conditions
+C> @file wall_bc.f Dirichlet states for wall boundary conditions
 ! FUN FACT: Did you know that bdry.f has a subroutine called
 !           BCNEUSC
       subroutine wallbc2(nstate,f,e,faceq,bcq)

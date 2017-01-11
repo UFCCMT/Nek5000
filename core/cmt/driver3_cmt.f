@@ -1,4 +1,4 @@
-C> @file routines for primitive variables, usr-file interfaces
+C> @file driver3_cmt.f routines for primitive variables, usr-file interfaces
 C> and properties
 
 C> Compute primitive variables (velocity, thermodynamic state) from 

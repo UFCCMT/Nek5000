@@ -1,4 +1,4 @@
-C> @file Routines for entire terms on RHS. Mostly volume integrals
+C> @file eqnsolver_cmt.f Routines for entire terms on RHS. Mostly volume integrals
 
 C> Volume integral for diffusive terms. Compute \f$\mathbf{H}^d\f$
 C> and store it for one element. Store faces of \f$\mathbf{H}^d\f$ for IGU. 

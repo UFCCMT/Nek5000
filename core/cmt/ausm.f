@@ -1,4 +1,4 @@
-C> @file Riemann solvers and other rocflu miscellany
+C> @file ausm.f Riemann solvers and other rocflu miscellany
 ! ******************************************************************************
 !
 ! Purpose: Compute convective fluxes using AUSM+ scheme.
