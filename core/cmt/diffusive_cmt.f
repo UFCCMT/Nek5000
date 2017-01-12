@@ -1,5 +1,7 @@
 C> @file diffusive_cmt.f routines for diffusive fluxes.
 C> Some surface. Some volume. All pain. Jacobians and other factorizations.
+
+C> ummcu = \f$\mathbf{U}^--\{\{\mathbf{U}\}\}\f$
       subroutine imqqtu(ummcu,uminus,uplus)
 ! Computes (I-0.5*QQT)U for all five conserved variables.
 ! See call in compute_rhs_and_dt for important documentation
@@ -29,6 +31,7 @@ C> Some surface. Some volume. All pain. Jacobians and other factorizations.
 
 !-----------------------------------------------------------------------
 
+C> umubc = \f$\mathbf{U}^--\mathbf{U}^D\f$
       subroutine imqqtu_dirichlet(umubc,qminus,qplus)
 ! v+ undefined on boundary faces, so (I-0.5QQ^T) degenerates to 
 ! [[U]] with respect to the Dirichlet boundary state
@@ -95,6 +98,7 @@ C> Some surface. Some volume. All pain. Jacobians and other factorizations.
 
 !-----------------------------------------------------------------------
 
+C> flux = \f$\mathscr{A}\f$ dU = \f$\left(\mathscr{A}^{\mbox{NS}}+\mathscr{A}^{\mbox{EVM}}\right) \f$dU 
       subroutine agradu(flux,du,e,eq)
       include 'SIZE'
       include 'CMTDATA'
@@ -127,8 +131,11 @@ C> Some surface. Some volume. All pain. Jacobians and other factorizations.
       integer e, eq
       real flux(nx1*ny1*nz1,ndim),du(nx1*ny1*nz1,toteq,ndim)
 
-! \tau_{ij} and u_j \tau_{ij}.  lambda=0 and kappa=0 for EVM
+C> \f$\tau_{ij}\f$ and \f$u_j \tau_{ij}\f$.  \f$\lambda=0\f$ and \f$\kappa=0\f$
+C> for EVM
       call fluxj_ns (flux,du,e,eq)
+C> \f$\nu_s \nabla \rho\f$, \f$\nu_s \left(\nabla \rho \right) \otimes \mathbf{u}\f$
+C> and \f$\nu_s \nabla \left(\rho e\right)\f$.  \f$\nu_s=0\f$ for Navier-Stokes
       call fluxj_evm(flux,du,e,eq)
 
 ! no idea where phi goes
@@ -139,6 +146,9 @@ C> Some surface. Some volume. All pain. Jacobians and other factorizations.
 
 !-----------------------------------------------------------------------
 
+C> \f$ \tau_{ij}=2 \mu\sigma_{ij} + \lambda \Delta \delta_{ij}\f$
+C> Navier-Stokes, so no mass diffusion. uservp provides properties.
+C> Implemented via maxima-generated code
       subroutine fluxj_ns(flux,gradu,e,eq)
 ! viscous flux jacobian for compressible Navier-Stokes equations (NS)
 ! SOLN and CMTDATA are indexed, assuming vdiff has been filled by uservp
