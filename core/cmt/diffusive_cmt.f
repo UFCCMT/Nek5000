@@ -223,8 +223,10 @@ C> Implemented via maxima-generated code
 !     subroutine agradu_ns(gijklu,dut,visco,e,eq,jflux,kdir) ! in junkyard...
 !-----------------------------------------------------------------------
 
+C> viscous flux jacobian for entropy viscosity Euler regularization of
+C> Guermond and Popov (2014) SIAM JAM 74(2) that do NOT overlap with
+C> the compressible Navier-Stokes equations (NS).
       subroutine fluxj_evm(flux,du,e,eq)
-! viscous flux jacobian for compressible Navier-Stokes equations (NS)
 ! SOLN and CMTDATA are indexed, assuming vdiff has been filled by uservp
 ! somehow. In serious need of debugging and replacement.
       include 'SIZE'

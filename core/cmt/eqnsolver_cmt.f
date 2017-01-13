@@ -106,12 +106,12 @@ C> \f$G^T U\f$
       nvol  =nxyz*nelt
       ngradu=nxyz*toteq*3
       do eq=1,toteq
-         call rzero(diffh,3*nxyz)
          call rzero(superhugeh,3*lx1*ly1*lz1*lelt)
          if (eq .eq. 4 .and. .not. if3d) goto 133
          l=1
          m=1
          do e=1,nelt
+            call rzero(diffh,3*nxyz)
             call rzero(gradu,ngradu) ! this too goes away when gradu is global
             do j=1,ndim
                do eq2=1,toteq ! sigh
