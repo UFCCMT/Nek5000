@@ -63,18 +63,16 @@ c              u(i,1,1,eq,e) = bm1(i,1,1,e)*u(i,1,1,eq,e) - DT *
 c    >                        (c1*res1(i,1,1,e,eq) + c2*res2(i,1,1,e,eq)
 c    >                       + c3*res3(i,1,1,e,eq))
 c-----------------------------------------------------------------------
-c this completely stops working if B become nondiagonal for any reason.
 ! JH111815 in fact, I'd like to redo the time marching stuff above and
 !          have an fbinvert call for res1
                u(i,1,1,eq,e) = u(i,1,1,eq,e)/bm1(i,1,1,e)
-c that completely stops working if B become nondiagonal for any reason.
-!-----------------------------------------------------------------------
+c-----------------------------------------------------------------------
             enddo
             enddo
          enddo
       enddo
 
-      call compute_primitive_vars ! for next time step
+      call compute_primitive_vars ! for next time step? Not sure anymore
       ftime = ftime + dnekclock() - ftime_dum
 
       if (mod(istep,iostep).eq.0.or.istep.eq.1)then
@@ -131,33 +129,15 @@ C> Store it in res1
 !     if(IFFLTR)  call filter_cmtvar(IFCNTFILT)
 !        primitive vars = rho, u, v, w, p, T, phi_g
 
-! Uncomment this code as a last resort. there is no way it is necessary
-!     if (istep.eq.1) then
-!        call compute_primitive_vars
-!        call compute_transport_props
-!     else
-!        if(stage.gt.1) then
-!           call compute_primitive_vars
-!           call compute_transport_props
-!        endif
-!     endif
-! Uncomment that code as a last resort. there is no way it is necessary
-
       call compute_primitive_vars
-      if(stage.eq.1) then
+      if(stage.eq.1) then ! I would put this in userchk, but we are open to more
+                          ! "accurate" computations of residual
          call entropy_viscosity ! accessed through uservp. computes
                                 ! entropy residual and max wave speed
       endif
-      call compute_transport_props ! inside rk stage or not?
+      call compute_transport_props ! inside rk stage or not? So far so good
 !     call smoothing(vdiff(1,1,1,1,imu))
-      call cmult(vdiff(1,1,1,1,imu),0.5,nx1*ny1*nz1*nelt) ! A factor of
-           ! 2 lurks in agradu's evaluation of strain rate, even in EVM
 ! you have GOT to figure out where phig goes!!!!
-!     do e=1,nelt ! THIS DOESN'T WORK BUT IT SHOULD!!!!
-!        call col2(vdiff(1,1,1,e,imu),u(1,1,1,1,e),nx1*ny1*nz1) ! stress dims
-!     enddo
-!        call col2(vdiff(1,1,1,1,imu),vtrans(1,1,1,1,irho),
-!    >             nx1*ny1*nz1*nelt)
 
 !-----------------------------------------------------------------------
 ! JH072914 We can really only proceed with dt once we have current
@@ -166,6 +146,8 @@ C> Store it in res1
       if(stage.eq.1) call setdtcmt
       ntot = lx1*ly1*lz1*lelcmt*toteq
       call rzero(res1,ntot)
+      call rzero(flux,heresize)
+      call rzero(graduf,hdsize)
 
 !     !Total_eqs = 5 (we will set this up so that it can be a user 
 !     !defined value. 5 will be its default value)
@@ -253,7 +235,6 @@ C> res1+=\f$\int_{\Gamma} \{\{\mathbf{A}\nabla \mathbf{U}\}\} \cdot \left[v\righ
       enddo
       dumchars='end_of_rhs'
 !     call dumpresidue(dumchars,999)
-!     call exitt
 
       return
       end
