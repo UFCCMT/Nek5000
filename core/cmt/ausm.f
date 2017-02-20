@@ -135,14 +135,10 @@ C> @file ausm.f Riemann solvers and other rocflu miscellany
       END
 
 !-----------------------------------------------------------------------
-
+! NOT LONG FOR THIS WORLD
       SUBROUTINE CentralInviscid_FluxFunction(ntot,nx,ny,nz,fs,ul,pl,
      >                                     ur,pr,flx)
 ! JH081915 More general, more obvious
-! JH111815 HEY GENIUS THIS MAY BE SECOND ORDER AND THUS KILLING YOUR
-!          CONVERGENCE. REPLACE WITH AUSM AND SHITCAN IT
-! JH112015 This isn't why walls aren't converging. There's something
-!          inherently second-order about your wall pressure. Think!
       real nx(ntot),ny(ntot),nz(ntot),fs(ntot),ul(ntot,5),pl(ntot),
      >     ur(ntot,5),pr(ntot) ! intent(in)
       real flx(ntot,5)! intent(out),dimension(5) ::

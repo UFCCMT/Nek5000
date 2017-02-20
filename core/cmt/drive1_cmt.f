@@ -165,9 +165,9 @@ C> \f$\mathbf{U}^+\f$; store in CMTSURFLX
 C> res1+=\f$\oint \mathbf{H}^{c\ast}\cdot\mathbf{n}dA\f$ on face points
       nstate=nqq
       nfq=nx1*nz1*2*ndim*nelt
-      iqm =1
-      iqp =iqm+nstate*nfq
-      iflx=iqp+nstate*nfq
+      iwm =1
+      iwp =iwm+nstate*nfq
+      iflx=iwp+nstate*nfq
       do eq=1,toteq
          ieq=(eq-1)*ndg_face+iflx
          call surface_integral_full(res1(1,1,1,1,eq),flux(ieq))
@@ -188,11 +188,11 @@ C> res1+=\f$\oint \mathbf{H}^{c\ast}\cdot\mathbf{n}dA\f$ on face points
 ! CMTDATA BETTA REFLECT THIS!!!
 !***********************************************************************
 C> res1+=\f$\int_{\Gamma} \{\{\mathbf{A}^{\intercal}\nabla v\}\} \cdot \left[\mathbf{U}\right] dA\f$
-      ium=(iu1-1)*nfq+iqm
-      iup=(iu1-1)*nfq+iqp
+      ium=(iu1-1)*nfq+iwm
+      iup=(iu1-1)*nfq+iwp
       call   imqqtu(flux(iuj),flux(ium),flux(iup))
-      call   imqqtu_dirichlet(flux(iuj),flux(iqm),flux(iqp))
-      call igtu_cmt(flux(iqm),flux(iuj),graduf) ! [[u]].{{gradv}}
+      call   imqqtu_dirichlet(flux(iuj),flux(iwm),flux(iwp))
+      call igtu_cmt(flux(iwm),flux(iuj),graduf) ! [[u]].{{gradv}}
       dumchars='after_igtu'
 !     call dumpresidue(dumchars,999)
 
@@ -227,9 +227,9 @@ C> for each equation (inner), one element at a time (outer)
 !     call dumpresidue(dumchars,999)
 
 C> res1+=\f$\int_{\Gamma} \{\{\mathbf{A}\nabla \mathbf{U}\}\} \cdot \left[v\right] dA\f$
-      call igu_cmt(flux(iqp),graduf,flux(iqm))
+      call igu_cmt(flux(iwp),graduf,flux(iwm))
       do eq=1,toteq
-         ieq=(eq-1)*ndg_face+iqp
+         ieq=(eq-1)*ndg_face+iwp
 !Finally add viscous surface flux functions of derivatives to res1.
          call surface_integral_full(res1(1,1,1,1,eq),flux(ieq))
       enddo

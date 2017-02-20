@@ -26,23 +26,23 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
       nfq=nx1*nz1*2*ndim*nelt
       nstate = nqq
 ! where different things live
-      iqm =1
-      iqp =iqm+nstate*nfq
-      iflx=iqp+nstate*nfq
+      iwm =1
+      iwp =iwm+nstate*nfq
+      iflx=iwp+nstate*nfq
 
-      call fillq(irho,vtrans,fatface(iqm),fatface(iqp))
-      call fillq(iux, vx,    fatface(iqm),fatface(iqp))
-      call fillq(iuy, vy,    fatface(iqm),fatface(iqp))
-      call fillq(iuz, vz,    fatface(iqm),fatface(iqp))
-      call fillq(ipr, pr,    fatface(iqm),fatface(iqp))
-      call fillq(ithm,t,     fatface(iqm),fatface(iqp))
-      call fillq(isnd,csound,fatface(iqm),fatface(iqp))
-      call fillq(iph, phig,  fatface(iqm),fatface(iqp))
-      call fillq(icvf,vtrans(1,1,1,1,icv),fatface(iqm),fatface(iqp))
-      call fillq(icpf,vtrans(1,1,1,1,icp),fatface(iqm),fatface(iqp))
-      call fillq(imuf, vdiff(1,1,1,1,imu), fatface(iqm),fatface(iqp))
-      call fillq(ikndf,vdiff(1,1,1,1,iknd),fatface(iqm),fatface(iqp))
-      call fillq(ilamf,vdiff(1,1,1,1,ilam),fatface(iqm),fatface(iqp))
+      call fillq(irho,vtrans,fatface(iwm),fatface(iwp))
+      call fillq(iux, vx,    fatface(iwm),fatface(iwp))
+      call fillq(iuy, vy,    fatface(iwm),fatface(iwp))
+      call fillq(iuz, vz,    fatface(iwm),fatface(iwp))
+      call fillq(ipr, pr,    fatface(iwm),fatface(iwp))
+      call fillq(ithm,t,     fatface(iwm),fatface(iwp))
+      call fillq(isnd,csound,fatface(iwm),fatface(iwp))
+      call fillq(iph, phig,  fatface(iwm),fatface(iwp))
+      call fillq(icvf,vtrans(1,1,1,1,icv),fatface(iwm),fatface(iwp))
+      call fillq(icpf,vtrans(1,1,1,1,icp),fatface(iwm),fatface(iwp))
+      call fillq(imuf, vdiff(1,1,1,1,imu), fatface(iwm),fatface(iwp))
+      call fillq(ikndf,vdiff(1,1,1,1,iknd),fatface(iwm),fatface(iwp))
+      call fillq(ilamf,vdiff(1,1,1,1,ilam),fatface(iwm),fatface(iwp))
 
       i_cvars=(iu1-1)*nfq+1
       do eq=1,toteq
@@ -50,10 +50,12 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
          i_cvars=i_cvars+nfq
       enddo
 
-      call face_state_commo(fatface(iqm),fatface(iqp),nfq,nstate
+      call face_state_commo(fatface(iwm),fatface(iwp),nfq,nstate
      >                     ,dg_hndl)
 
-      call InviscidFlux(fatface(iqm),fatface(iqp),fatface(iflx)
+      call InviscidBC(fatface(iwm),fatface(iwp),nstate)
+
+      call InviscidFlux(fatface(iwm),fatface(iwp),fatface(iflx)
      >                 ,nstate,toteq)
 
 !     call face_flux_commo(fatface(iflx),fatface(iflx),ndg_face,toteq,
@@ -82,14 +84,14 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
 
 !-----------------------------------------------------------------------
 
-      subroutine fillq(ivar,field,qminus,yourface)
+      subroutine fillq(ivar,field,wminus,yourface)
       include 'SIZE'
       include 'DG'
 
       integer ivar! intent(in)
       real field(nx1,ny1,nz1,nelt)! intent(in)
-!     real, intent(out)qminus(7,nx1*nz1*2*ldim*nelt) ! gs_op no worky
-      real qminus(nx1*nz1*2*ndim*nelt,*)! intent(out)
+!     real, intent(out)wminus(7,nx1*nz1*2*ldim*nelt) ! gs_op no worky
+      real wminus(nx1*nz1*2*ndim*nelt,*)! intent(out)
       real yourface(nx1,nz1,2*ndim,*)
       integer e,f
 
@@ -99,7 +101,7 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
       call full2face_cmt(nelt,nx1,ny1,nz1,iface_flux,yourface,field)
 
       do i=1,ndg_face
-         qminus(i,ivar)=yourface(i,1,1,1)
+         wminus(i,ivar)=yourface(i,1,1,1)
       enddo
 
       return
@@ -147,7 +149,7 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
 
 !-------------------------------------------------------------------------------
 
-      subroutine InviscidFlux(qminus,qplus,flux,nstate,nflux)
+      subroutine InviscidFlux(wminus,wplus,flux,nstate,nflux)
 !-------------------------------------------------------------------------------
 ! JH091514 A fading copy of RFLU_ModAUSM.F90 from RocFlu
 !-------------------------------------------------------------------------------
@@ -166,8 +168,8 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
 ! Arguments
 ! ==============================================================================
       integer nstate,nflux
-      real qminus(nx1*nz1,2*ndim,nelt,nstate),
-     >     qplus(nx1*nz1,2*ndim,nelt,nstate),
+      real wminus(nx1*nz1,2*ndim,nelt,nstate),
+     >     wplus(nx1*nz1,2*ndim,nelt,nstate),
      >     flux(nx1*nz1,2*ndim,nelt,nflux)
 
 ! ==============================================================================
@@ -227,118 +229,88 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
       do e=1,nelt
       do f=1,nface
 
-         cb=cbc(f,e,ifield)
-         if (cb.ne.'E  '.and.cb.ne.'P  ') then ! cbc bndy
-
-!-----------------------------------------------------------------------
-! compute flux for weakly-enforced boundary condition
-!-----------------------------------------------------------------------
-
-            do j=1,nstate
-               do i=1,nxz
-                  if (abs(qplus(i,f,e,j)) .gt. ntol) then
-                  write(6,*) nid,j,i,qplus(i,f,e,j),qminus(i,f,e,j),cb,
-     > nstate
-                  write(deathmessage,*)  'GS hit a bndy,f,e=',f,e,'$'
-! Make sure you are not abusing this error handler
-                  call exitti(deathmessage,f)
-                  endif
-               enddo
-            enddo
-! JH031315 flux added to argument list. BC routines preserve qminus for
-!          obvious reasons and fill qplus with good stuff for everybody:
-!          imposed states for Dirichlet conditions, and important things
-!          for viscous numerical fluxes.
-! JH060215 added SYM bc. Just use it as a slip wall hopefully.
-            if (cb.eq.'v  ' .or. cb .eq. 'V  ') then
-              call inflow(nstate,f,e,qminus,qplus,flux)
-            elseif (cb.eq.'O  ') then
-              call outflow(nstate,f,e,qminus,qplus,flux)
-            elseif (cb .eq. 'W  ' .or. cb .eq.'I  '.or.cb .eq.'SYM')then
-              call wallbc(nstate,f,e,qminus,qplus,flux)
-            endif 
-
-         else ! cbc(f,e,ifield) == 'E  ' or 'P  ' below; interior face
-
+! JH021717 Finally corrected BC wrongheadedness. Riemann solver handles
+!          all fluxes with even the slightest Dirichlet interpretation,
+!          and BC fill qplus sanely for the Riemann solver to provide
+!          a good flux for weak BC.
 ! JH111715 now with dealiased surface integrals. I am too lazy to write
 !          something better
 
-            if (nxd.gt.nx1) then
-               call map_faced(nx,unx(1,1,f,e),nx1,nxd,fdim,0)
-               call map_faced(ny,uny(1,1,f,e),nx1,nxd,fdim,0)
-               call map_faced(nz,unz(1,1,f,e),nx1,nxd,fdim,0)
+         if (nxd.gt.nx1) then
+            call map_faced(nx,unx(1,1,f,e),nx1,nxd,fdim,0)
+            call map_faced(ny,uny(1,1,f,e),nx1,nxd,fdim,0)
+            call map_faced(nz,unz(1,1,f,e),nx1,nxd,fdim,0)
 
-               call map_faced(rl,qminus(1,f,e,irho),nx1,nxd,fdim,0)
-               call map_faced(ul,qminus(1,f,e,iux),nx1,nxd,fdim,0)
-               call map_faced(vl,qminus(1,f,e,iuy),nx1,nxd,fdim,0)
-               call map_faced(wl,qminus(1,f,e,iuz),nx1,nxd,fdim,0)
-               call map_faced(pl,qminus(1,f,e,ipr),nx1,nxd,fdim,0)
-               call map_faced(tl,qminus(1,f,e,ithm),nx1,nxd,fdim,0)
-               call map_faced(al,qminus(1,f,e,isnd),nx1,nxd,fdim,0)
-               call map_faced(cpl,qminus(1,f,e,icpf),nx1,nxd,fdim,0)
+            call map_faced(rl,wminus(1,f,e,irho),nx1,nxd,fdim,0)
+            call map_faced(ul,wminus(1,f,e,iux),nx1,nxd,fdim,0)
+            call map_faced(vl,wminus(1,f,e,iuy),nx1,nxd,fdim,0)
+            call map_faced(wl,wminus(1,f,e,iuz),nx1,nxd,fdim,0)
+            call map_faced(pl,wminus(1,f,e,ipr),nx1,nxd,fdim,0)
+            call map_faced(tl,wminus(1,f,e,ithm),nx1,nxd,fdim,0)
+            call map_faced(al,wminus(1,f,e,isnd),nx1,nxd,fdim,0)
+            call map_faced(cpl,wminus(1,f,e,icpf),nx1,nxd,fdim,0)
 
-               call map_faced(rr,qplus(1,f,e,irho),nx1,nxd,fdim,0)
-               call map_faced(ur,qplus(1,f,e,iux),nx1,nxd,fdim,0)
-               call map_faced(vr,qplus(1,f,e,iuy),nx1,nxd,fdim,0)
-               call map_faced(wr,qplus(1,f,e,iuz),nx1,nxd,fdim,0)
-               call map_faced(pr,qplus(1,f,e,ipr),nx1,nxd,fdim,0)
-               call map_faced(tr,qplus(1,f,e,ithm),nx1,nxd,fdim,0)
-               call map_faced(ar,qplus(1,f,e,isnd),nx1,nxd,fdim,0)
-               call map_faced(cpr,qplus(1,f,e,icpf),nx1,nxd,fdim,0)
+            call map_faced(rr,wplus(1,f,e,irho),nx1,nxd,fdim,0)
+            call map_faced(ur,wplus(1,f,e,iux),nx1,nxd,fdim,0)
+            call map_faced(vr,wplus(1,f,e,iuy),nx1,nxd,fdim,0)
+            call map_faced(wr,wplus(1,f,e,iuz),nx1,nxd,fdim,0)
+            call map_faced(pr,wplus(1,f,e,ipr),nx1,nxd,fdim,0)
+            call map_faced(tr,wplus(1,f,e,ithm),nx1,nxd,fdim,0)
+            call map_faced(ar,wplus(1,f,e,isnd),nx1,nxd,fdim,0)
+            call map_faced(cpr,wplus(1,f,e,icpf),nx1,nxd,fdim,0)
 
-               call map_faced(phl,qminus(1,f,e,iph),nx1,nxd,fdim,0)
+            call map_faced(phl,wminus(1,f,e,iph),nx1,nxd,fdim,0)
 
-               call invcol3(jaco_c,area(1,1,f,e),wghtc,nxz)
-               call map_faced(jaco_f,jaco_c,nx1,nxd,fdim,0) 
-               call col2(jaco_f,wghtf,nxzd)
-            else
+            call invcol3(jaco_c,area(1,1,f,e),wghtc,nxz)
+            call map_faced(jaco_f,jaco_c,nx1,nxd,fdim,0) 
+            call col2(jaco_f,wghtf,nxzd)
+         else
 
-               call copy(nx,unx(1,1,f,e),nxz)
-               call copy(ny,uny(1,1,f,e),nxz)
-               call copy(nz,unz(1,1,f,e),nxz)
+            call copy(nx,unx(1,1,f,e),nxz)
+            call copy(ny,uny(1,1,f,e),nxz)
+            call copy(nz,unz(1,1,f,e),nxz)
 
-               call copy(rl,qminus(1,f,e,irho),nxz)
-               call copy(ul,qminus(1,f,e,iux),nxz)
-               call copy(vl,qminus(1,f,e,iuy),nxz)
-               call copy(wl,qminus(1,f,e,iuz),nxz)
-               call copy(pl,qminus(1,f,e,ipr),nxz)
-               call copy(tl,qminus(1,f,e,ithm),nxz)
-               call copy(al,qminus(1,f,e,isnd),nxz)
-               call copy(cpl,qminus(1,f,e,icpf),nxz)
+            call copy(rl,wminus(1,f,e,irho),nxz)
+            call copy(ul,wminus(1,f,e,iux),nxz)
+            call copy(vl,wminus(1,f,e,iuy),nxz)
+            call copy(wl,wminus(1,f,e,iuz),nxz)
+            call copy(pl,wminus(1,f,e,ipr),nxz)
+            call copy(tl,wminus(1,f,e,ithm),nxz)
+            call copy(al,wminus(1,f,e,isnd),nxz)
+            call copy(cpl,wminus(1,f,e,icpf),nxz)
 
-               call copy(rr,qplus(1,f,e,irho),nxz)
-               call copy(ur,qplus(1,f,e,iux),nxz)
-               call copy(vr,qplus(1,f,e,iuy),nxz)
-               call copy(wr,qplus(1,f,e,iuz),nxz)
-               call copy(pr,qplus(1,f,e,ipr),nxz)
-               call copy(tr,qplus(1,f,e,ithm),nxz)
-               call copy(ar,qplus(1,f,e,isnd),nxz)
-               call copy(cpr,qplus(1,f,e,icpf),nxz)
+            call copy(rr,wplus(1,f,e,irho),nxz)
+            call copy(ur,wplus(1,f,e,iux),nxz)
+            call copy(vr,wplus(1,f,e,iuy),nxz)
+            call copy(wr,wplus(1,f,e,iuz),nxz)
+            call copy(pr,wplus(1,f,e,ipr),nxz)
+            call copy(tr,wplus(1,f,e,ithm),nxz)
+            call copy(ar,wplus(1,f,e,isnd),nxz)
+            call copy(cpr,wplus(1,f,e,icpf),nxz)
 
-               call copy(phl,qminus(1,f,e,iph),nxz)
+            call copy(phl,wminus(1,f,e,iph),nxz)
 
-               call copy(jaco_f,area(1,1,f,e),nxz) 
-            endif
-            call rzero(fs,nxzd) ! moving grid stuff later
+            call copy(jaco_f,area(1,1,f,e),nxz) 
+         endif
+         call rzero(fs,nxzd) ! moving grid stuff later
 
-            call AUSM_FluxFunction(nxzd,nx,ny,nz,jaco_f,fs,rl,ul,vl,wl,
-     >                        pl,al,tl,rr,ur,vr,wr,pr,ar,tr,flx,cpl,cpr)
+         call AUSM_FluxFunction(nxzd,nx,ny,nz,jaco_f,fs,rl,ul,vl,wl,pl,
+     >                          al,tl,rr,ur,vr,wr,pr,ar,tr,flx,cpl,cpr)
 
+         do j=1,toteq
+            call col2(flx(1,j),phl,nxzd)
+         enddo
+
+         if (nxd.gt.nx1) then
             do j=1,toteq
-               call col2(flx(1,j),phl,nxzd)
+               call map_faced(flux(1,f,e,j),flx(1,j),nx1,nxd,fdim,1)
             enddo
+         else
+            do j=1,toteq
+               call copy(flux(1,f,e,j),flx(1,j),nxz)
+            enddo
+         endif
 
-            if (nxd.gt.nx1) then
-               do j=1,toteq
-                  call map_faced(flux(1,f,e,j),flx(1,j),nx1,nxd,fdim,1)
-               enddo
-            else
-               do j=1,toteq
-                  call copy(flux(1,f,e,j),flx(1,j),nxz)
-               enddo
-            endif
-
-         endif ! cbc(f,e,ifield)
       enddo
       enddo
 
@@ -404,7 +376,7 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
 
 !-----------------------------------------------------------------------
 
-      subroutine igu_cmt(flxscr,gdudxk,qminus)
+      subroutine igu_cmt(flxscr,gdudxk,wminus)
 ! Hij^{d*}
       include 'SIZE'
       include 'CMTDATA'
@@ -412,7 +384,7 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
 
       real flxscr(nx1*nz1*2*ndim*nelt,toteq)
       real gdudxk(nx1*nz1*2*ndim,nelt,toteq)
-      real qminus(nx1*nz1,2*ndim,nelt,nqq)
+      real wminus(nx1*nz1,2*ndim,nelt,nqq)
       real const
       integer e,eq,f
 
@@ -438,7 +410,7 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
 ! 1. (AgradU.n)- on Dirichlet boundaries
       call igu_dirichlet(flxscr,gdudxk)
 ! 2. (Fbc.n)- on Neumann boundaries
-      call bcflux(flxscr,gdudxk,qminus)
+      call bcflux(flxscr,gdudxk,wminus)
       call chsign(flxscr,ntot) ! needs to change with sign changes
 
       return
