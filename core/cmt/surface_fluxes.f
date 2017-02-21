@@ -161,7 +161,7 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
       include 'INPUT' ! do we need this?
       include 'GEOM' ! for unx
       include 'CMTDATA' ! do we need this without outflsub?
-!     include 'TSTEP' ! for ifield?
+      include 'TSTEP' ! for ifield?
       include 'DG'
 
 ! ==============================================================================
@@ -231,10 +231,25 @@ C> @file surface_fluxes.f Routines for surface terms on RHS.
 
 ! JH021717 Finally corrected BC wrongheadedness. Riemann solver handles
 !          all fluxes with even the slightest Dirichlet interpretation,
-!          and BC fill qplus sanely for the Riemann solver to provide
+!          and BC fill wplus sanely for the Riemann solver to provide
 !          a good flux for weak BC.
 ! JH111715 now with dealiased surface integrals. I am too lazy to write
 !          something better
+
+! diagnostic
+!        if (cbc(f,e,ifield).eq.'v  '.or.cbc(f,e,ifield).eq.'V  ')then
+!        if (istep .eq. 1000) then
+!           do i=1,nxz
+!              write(10+istep,'(2i3,a3,16e15.7)') e,f,cbc(f,e,ifield),
+!    .         wminus(i,f,e,irho),wplus(i,f,e,irho),
+!    .      wminus(i,f,e,iux), wplus(i,f,e,iux), wminus(i,f,e,iuy),
+!    .      wplus(i,f,e,iuy), wminus(i,f,e,ipr), wplus(i,f,e,ipr),
+!    .      wminus(i,f,e,ithm), wplus(i,f,e,ithm), wminus(i,f,e,isnd),
+!    .      wplus(i,f,e,isnd), wminus(i,f,e,icpf), wplus(i,f,e,icpf),
+!    .      wminus(i,f,e,iph), wplus(i,f,e,iph)
+!           enddo
+!        endif
+! diagnostic
 
          if (nxd.gt.nx1) then
             call map_faced(nx,unx(1,1,f,e),nx1,nxd,fdim,0)

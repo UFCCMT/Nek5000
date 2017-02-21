@@ -100,6 +100,7 @@ c                                     !     ux,uy,uz
 !          Hartmann & Houston (2006) type boundary conditions
 !          Emergency fallback if Holmes just doesn't play nice with DG
       include 'SIZE'
+!     include 'TSTEP' ! diagnostics
       include 'INPUT'
       include 'NEKUSE'
       include 'CMTDATA'

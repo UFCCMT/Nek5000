@@ -28,9 +28,10 @@ C> @file wall_bc.f Dirichlet states for wall boundary conditions
       do iz=k0,k1
       do iy=j0,j1
       do ix=i0,i1
-         call nekasgn(ix,iy,iz,e)     ! gives us phi- and rho-
-         call userbc (ix,iy,iz,f,ieg) ! just for molarmass, and
+         call nekasgn(ix,iy,iz,e)
+         call userbc (ix,iy,iz,f,ieg)
          l=l+1
+         if (ux .gt. -1.0e36) then ! physical not artvisc
          wbc(l,f,e,iux)=ux
          wbc(l,f,e,iuy)=uy
          wbc(l,f,e,iuz)=uz
@@ -58,6 +59,7 @@ C> @file wall_bc.f Dirichlet states for wall boundary conditions
 !    >     (facew(l,f,e,iu2)**2+facew(l,f,e,iu3)**2+facew(l,f,e,iu4)**2)
 !          METHOD "A"
             wbc(l,f,e,iu5)=facew(l,f,e,iu5)
+         endif
          endif
 ! JH111516 INVISCID HARDCODING ADIABATIC WALL. DO SMARTER SOON
 !-------------------------------------------------------------

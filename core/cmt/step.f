@@ -58,7 +58,7 @@ C> @file step.f time stepping and mesh spacing routines
       if (nio.eq.0) WRITE(6,100)ISTEP,TIME,DT,COURNO,diffno1,diffno2,
      >   diffno3
  100  FORMAT('CMT ',I7,', t=',1pE14.7,', DT=',1pE14.7
-     $,', C=',0pF7.3,', Dmu,knd,art=',3(1pE12.5))
+     $,', C=',1pE12.5,', Dmu,knd,art=',3(1pE11.4))
 !     Zero DT
 !
 !     IF (DT .EQ. 0.0) THEN
