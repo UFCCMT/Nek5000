@@ -447,24 +447,41 @@ C> @}
       parameter (ldd=lxd*lyd*lzd)
 c     common /ctmp1/ ur(ldd),us(ldd),ut(ldd),ju(ldd),ud(ldd),tu(ldd)
       real urst(lx1,ly1,lz1,2:4),dum(lx1,ly1,lz1)
-      common /throttle_output/ grad_phig
-      real grad_phig(lx1,ly1,lz1,lelt,3)
+
+      common /throttle_output/ grad_phig ! both not needed but for debg
+      real grad_phig(lx1,ly1,lz1,lelt,3) !
 
       nrstd=ldd
       nxyz=nx1*ny1*nz1
       call rzero(ud,nxyz)
       if(eq_num.ne.1.and.eq_num.ne.5)then
+
         call gradl_rst(urst(1,1,1,2),urst(1,1,1,3),urst(1,1,1,4),
      >                                        phig(1,1,1,e),lx1,if3d)
+      if(eq_num.eq.2) then
+         do i=1,nxyz
+            dum(i,1,1) = 1.0d+0/JACM1(i,1,1,e)*
+     >             (urst(i,1,1,2)*RXM1(i,1,1,e) +
+     >              urst(i,1,1,3)*SXM1(i,1,1,e) +
+     >              urst(i,1,1,4)*TXM1(i,1,1,e))
+         enddo
+      elseif(eq_num.eq.3) then
+         do i=1,nxyz
+            dum(i,1,1) = 1.0d+0/JACM1(i,1,1,e)*
+     >             (urst(i,1,1,2)*RYM1(i,1,1,e) +
+     >              urst(i,1,1,3)*SYM1(i,1,1,e) +
+     >              urst(i,1,1,4)*TYM1(i,1,1,e))
+         enddo
+      elseif(eq_num.eq.4) then
+         do i=1,nxyz
+            dum(i,1,1) = 1.0d+0/JACM1(i,1,1,e)*
+     >             (urst(i,1,1,2)*RZM1(i,1,1,e) +
+     >              urst(i,1,1,3)*SZM1(i,1,1,e) +
+     >              urst(i,1,1,4)*TZM1(i,1,1,e))
+         enddo
+      endif
 
-         
-        do i=1,nxyz
-           dum(i,1,1) = 1.0d+0/JACM1(i,1,1,e)*urst(i,1,1,eq_num)
-           if (eq_num .eq. 2) dum(i,1,1) = dum(i,1,1)*RXM1(i,1,1,e)
-           if (eq_num .eq. 3) dum(i,1,1) = dum(i,1,1)*SYM1(i,1,1,e)
-           if (eq_num .eq. 4) dum(i,1,1) = dum(i,1,1)*TZM1(i,1,1,e)
-        enddo
-
+c     not needed, but used for debuging grad phi field
         do k=1,lz1
         do j=1,ly1
         do i=1,lx1
@@ -476,8 +493,8 @@ c     common /ctmp1/ ur(ldd),us(ldd),ut(ldd),ju(ldd),ud(ldd),tu(ldd)
         if (eq_num.eq.4.and.ldim.eq.2)then
 
         else
-c          call subcol3(res1(1,1,1,e,eq_num),dum(1,1,1)
-c    >                  ,bm1(1,1,1,e),nxyz)
+           call subcol3(res1(1,1,1,e,eq_num),dum(1,1,1)
+     >                  ,bm1(1,1,1,e),nxyz)
            call subcol3(res1(1,1,1,e,eq_num),usrf(1,1,1,eq_num)
      $                  ,bm1(1,1,1,e),nxyz) 
         endif
