@@ -96,7 +96,7 @@ c dump out particle information.
          call usr_particles_io(istep)
       end if
 
-!     call print_cmt_timers ! NOT NOW
+      call print_cmt_timers
 
  101  format(4(2x,e18.9))
       return
