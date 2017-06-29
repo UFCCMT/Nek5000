@@ -482,13 +482,18 @@ c     common /ctmp1/ ur(ldd),us(ldd),ut(ldd),ju(ldd),ud(ldd),tu(ldd)
       endif
 
 c     not needed, but used for debuging grad phi field
-        do k=1,lz1
-        do j=1,ly1
-        do i=1,lx1
-           grad_phig(i,j,k,e,eq_num-1) = dum(i,j,k)
-        enddo
-        enddo
-        enddo
+      do k=1,lz1
+      do j=1,ly1
+      do i=1,lx1
+         grad_phig(i,j,k,e,eq_num-1) = dum(i,j,k)
+      enddo
+      enddo
+      enddo
+
+c     multiply by pressure
+      do i=1,nxyz
+         dum(i,1,1) = dum(i,1,1)*pr(i,1,1,e)
+      enddo
 
         if (eq_num.eq.4.and.ldim.eq.2)then
 
