@@ -50,6 +50,11 @@ C> @file step.f time stepping and mesh spacing routines
       else
          dt_cmt=dt
       endif
+
+      ! particle cfl
+      call set_dt_particles(rdt_part)
+      dt_cmt = min(dt_cmt,rdt_part)
+        
       if (timeio .gt. 0.0) then ! adjust dt for timeio. 
          zetime1=time_cmt
          zetime2=time_cmt+dt_cmt

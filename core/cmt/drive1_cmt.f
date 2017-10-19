@@ -50,10 +50,7 @@ c     Solve the Euler equations
          rhst_dum = dnekclock()
          call compute_rhs_and_dt
          rhst = rhst + dnekclock() - rhst_dum
-c particle equations of motion are solved (also includes forcing)
-c In future this subroutine may compute the back effect of particles
-c on the fluid and suitably modify the residue computed by 
-c compute_rhs_dt for the 5 conserved variables
+
          call usr_particles_solver
 
 ! JH111815 soon....
@@ -101,7 +98,6 @@ c dump out particle information.
       end
 
 c-----------------------------------------------------------------------
-
 C> Compute right-hand-side of the semidiscrete conservation law
 C> Store it in res1
       subroutine compute_rhs_and_dt
