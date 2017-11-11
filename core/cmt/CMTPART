@@ -4,7 +4,7 @@ c     timer stuff ---------------------------------------------------
       common /pt_timers/ pttime,ptdum
 
 c     main common blocks - rpart and ipart --------------------------
-      parameter (lr=84,li=12)
+      parameter (lr=85,li=12)
       common  /cpartr/ rpart(lr,llpart) 
       common  /cparti/ ipart(li,llpart) 
       common  /iparti/ n,nr,ni
@@ -15,7 +15,7 @@ c     main common blocks - rpart and ipart --------------------------
      >                   ,jfqs,jfun,jfiu,jtaup,jcd,jdrhodt,jre,jDuDt
      >                   ,jtemp,jrho,jrhop,ja,jvol,jdp,jar,jx1,jx2,jx3
      >                   ,jv1,jv2,jv3,ju1,ju2,ju3,nar,jvol1,jgam,jspl
-     >                   ,jtempf,jq0,jg0,jqqs,jquu,jcmiu
+     >                   ,jtempf,jq0,jg0,jqqs,jquu,jcmiu,jdpe
 
 
 c     particle options ----------------------------------------------
@@ -29,12 +29,12 @@ c     particle options ----------------------------------------------
 
 c     particle parameters -------------------------------------------
       common /part_paramsr/ deltaf, dp, deltax, rho_p, tau_p,mu_0,tp_0,
-     >                     phi_desire,vol_distrib,rsig,df_dp,df_dx,
+     >                     phi_desire,vol_distrib,rsig,df_dp,dfilt,
      >                     ralphdecay,rxbo,cp_p,rleng,
      >                     dt_part_ini,ksp,dt_part,e_rest
       common /part_paramsi/ nw,nrandseed,nwe
       real   deltaf,dp(2),deltax,rho_p,tau_p,mu_0,phi_desire,
-     >       vol_distrib,rsig,df_dp,df_dx,ralphdecay,rxbo(2,3),
+     >       vol_distrib,rsig,df_dp,dfilt,ralphdecay,rxbo(2,3),
      >       cp_p,rleng,tp_0,dt_part_ini,ksp,dt_part,e_rest
       integer nw,nrandseed,nwe
 
@@ -45,7 +45,7 @@ c     barycentric interpolation -------------------------------------
       integer nx1r
 
 c     ghost particles -----------------------------------------------
-      parameter (lrgp=14,ligp=6)
+      parameter (lrgp=15,ligp=6)
       common /gp_pointsr/ rptsgp(lrgp,llpart)
       common /gp_pointsi/ iptsgp(ligp,llpart)
       common /gp_lens/ nfptsgp,nigp,nrgp
@@ -55,7 +55,7 @@ c     ghost particles -----------------------------------------------
 
       common /gp_ptpointers/ jgppid1,jgppid2,jgppid3,jgpps,jgppt,jgpes
      >                      ,jgpx,jgpy,jgpz,jgpfh,jgpvol,jgpgam,jgpspl
-     >                      ,jgpg0,jgpq0,jgpv0
+     >                      ,jgpg0,jgpq0,jgpv0,jgpdpe
 
 c     ghost particle element mapping --------------------------------
       integer el_face_proc_map(lelt,6)  ,el_face_el_map(lelt,6),
