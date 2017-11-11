@@ -50,11 +50,14 @@ c----------------------------------------------------------------------
          call point_to_grid_corr_init    ! for gamma correction integrat
          call spread_props_grid           ! put particle props on grid
 
+         call usr_particles_io(1)
+
          do i = 2,nitspl
             call interp_props_part_location ! interpolate
             call correct_spl
             call particles_solver_nearest_neighbor ! nearest neigh
             call spread_props_grid           ! put particle props on grid
+         call usr_particles_io(1)
             if (nid.eq.0) write(6,*) i,'Pre-SPL iteration'
          enddo
          
@@ -850,17 +853,17 @@ c     ntmp = iglsum(n,1)
 c     if (nid.eq.0) write(6,*) 'Passed remote spreading to grid'
 
 c     volume fraction cant be more tahn rvfmax ... 
-c     rvfmax = 0.7
-c     do ie=1,nelt
-c     do k=1,nz1
-c     do j=1,ny1
-c     do i=1,nx1
-c        if (ptw(i,j,k,ie,4) .gt. rvfmax) ptw(i,j,k,ie,4) = rvfmax
-c        phig(i,j,k,ie) = 1. - ptw(i,j,k,ie,4)
-c     enddo
-c     enddo
-c     enddo
-c     enddo
+      rvfmax = 0.7
+      do ie=1,nelt
+      do k=1,nz1
+      do j=1,ny1
+      do i=1,nx1
+         if (ptw(i,j,k,ie,4) .gt. rvfmax) ptw(i,j,k,ie,4) = rvfmax
+         phig(i,j,k,ie) = 1. - ptw(i,j,k,ie,4)
+      enddo
+      enddo
+      enddo
+      enddo
 
       ! end timer
       pttime(9) = pttime(9) + dnekclock() - ptdum(9)
