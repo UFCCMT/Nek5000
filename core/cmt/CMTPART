@@ -29,12 +29,12 @@ c     particle options ----------------------------------------------
 
 c     particle parameters -------------------------------------------
       common /part_paramsr/ deltaf, dp, deltax, rho_p, tau_p,mu_0,tp_0,
-     >                     phi_desire,vol_distrib,rsig,df_dp,df_dx,
+     >                     phi_desire,vol_distrib,rsig,df_dp,dfilt,
      >                     ralphdecay,rxbo,cp_p,rleng,
      >                     dt_part_ini,ksp,dt_part,e_rest
       common /part_paramsi/ nw,nrandseed,nwe
       real   deltaf,dp(2),deltax,rho_p,tau_p,mu_0,phi_desire,
-     >       vol_distrib,rsig,df_dp,df_dx,ralphdecay,rxbo(2,3),
+     >       vol_distrib,rsig,df_dp,dfilt,ralphdecay,rxbo(2,3),
      >       cp_p,rleng,tp_0,dt_part_ini,ksp,dt_part,e_rest
       integer nw,nrandseed,nwe
 
